@@ -120,8 +120,22 @@
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of People' } } }
+      plugins: {
+        legend: { position: 'top' }
+      },
+      scales: {
+        x: {
+          stacked: true
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Number of People'
+          }
+        }
+      }
     }
   });
   const sessionDates = <%- JSON.stringify(sessionDates) %>;
