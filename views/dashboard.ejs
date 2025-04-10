@@ -45,7 +45,22 @@
     }
   });
 
+  
+  function updateChart(monthKey) {
+    const data = dailyChartData[monthKey] || [];
+    chart.data.labels = data.map(d => d.day);
+    chart.data.datasets[0].data = data.map(d => d.total.toFixed(2));
+    chart.update();
+  }
+
   populateMonthSelector(document.getElementById("chartMonth"), (y, m) => {
+    const key = y + '-' + String(m + 1).padStart(2, '0');
+    updateChart(key);
+  });
+
+  const now = new Date();
+  updateChart(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+
     // NOTE: This is placeholder only. In real app you'd request updated data from the backend.
     console.log("Switch chart to:", y, m);
   });
@@ -176,10 +191,13 @@
     calendarContainer.appendChild(dayEl);
   }
 
-  const chartLabels = <%- JSON.stringify(chartLabels) %>;
-  const chartData = <%- JSON.stringify(chartData) %>;
+  const dailyChartData = <%- JSON.stringify(dailyChartByMonth) %>;
+  
 
-  new Chart(document.getElementById('trendChart').getContext('2d'), {
+  
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  const chart = new Chart(ctx, {
+
     type: 'bar',
     data: {
       labels: chartLabels,
@@ -190,7 +208,10 @@
       }]
     },
     options: {
+      
       responsive: true,
+      animation: false,
+
       plugins: {
         legend: { display: false }
       },
@@ -239,7 +260,22 @@
     }
   });
 
+  
+  function updateChart(monthKey) {
+    const data = dailyChartData[monthKey] || [];
+    chart.data.labels = data.map(d => d.day);
+    chart.data.datasets[0].data = data.map(d => d.total.toFixed(2));
+    chart.update();
+  }
+
   populateMonthSelector(document.getElementById("chartMonth"), (y, m) => {
+    const key = y + '-' + String(m + 1).padStart(2, '0');
+    updateChart(key);
+  });
+
+  const now = new Date();
+  updateChart(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+
     // NOTE: This is placeholder only. In real app you'd request updated data from the backend.
     console.log("Switch chart to:", y, m);
   });
