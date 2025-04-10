@@ -26,7 +26,6 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       ORDER BY day
     `);
 
-
     const dailyGrouped = {};
     dailyMultiMonthTrendRes.rows.forEach(r => {
       const key = r.month.toISOString().slice(0, 7); // e.g., "2025-03"
@@ -34,15 +33,15 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       dailyGrouped[key].push({ day: r.day, total: parseFloat(r.total) });
     });
 
-    const sessionDatesRes = await pool.query(\`
+    const sessionDatesRes = await pool.query(`
       SELECT DISTINCT DATE(start_time) AS session_date
       FROM sessions
       ORDER BY session_date;
-    \`);
+    `);
 
     const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
 
-    const groupSizeQuery = await pool.query(\`
+    const groupSizeQuery = await pool.query(`
       SELECT s.session_id,
              COUNT(*) FILTER (WHERE p.gender = 'Male') AS male_count,
              COUNT(*) FILTER (WHERE p.gender = 'Female') AS female_count
@@ -50,7 +49,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       JOIN participant_sessions ps ON s.session_id = ps.session_id
       JOIN participants p ON ps.participant_id = p.participant_id
       GROUP BY s.session_id
-    \`);
+    `);
 
     const groupSizeBuckets = {
       "1–3": { male: 0, female: 0 },
