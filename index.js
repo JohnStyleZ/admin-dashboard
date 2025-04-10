@@ -59,20 +59,48 @@ app.post('/admin/login', async (req, res) => {
 
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
-    const participantsResult = await pool.query('SELECT COUNT(*) AS total FROM participants');
-    const sessionsResult = await pool.query('SELECT COUNT(*) AS total FROM sessions');
+    const totalParticipantsRes = await pool.query('SELECT COUNT(*) FROM participants');
+    const maleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Male'");
+    const femaleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Female'");
+
+    const totalSpentRes = await pool.query('SELECT SUM(cost) FROM participant_sessions');
+    const avgCostRes = await pool.query('SELECT AVG(cost) FROM participant_sessions');
+
+    const topParticipantsRes = await pool.query(`
+      SELECT p.name, COUNT(ps.session_id) AS count
+      FROM participants p
+      JOIN participant_sessions ps ON p.participant_id = ps.participant_id
+      GROUP BY p.name
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+
+    const weeklyTrendRes = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'Dy') AS day, SUM(ps.cost) AS total
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      WHERE s.start_time > NOW() - INTERVAL '7 days'
+      GROUP BY day
+      ORDER BY MIN(s.start_time)
+    `);
+
     res.render('dashboard', {
       admin: req.session.admin,
-      totalParticipants: participantsResult.rows[0].total,
-      totalSessions: sessionsResult.rows[0].total,
-      chartLabels: [],
-      chartData: []
+      totalParticipants: totalParticipantsRes.rows[0].count,
+      maleCount: maleCountRes.rows[0].count,
+      femaleCount: femaleCountRes.rows[0].count,
+      totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
+      avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
+      topParticipants: topParticipantsRes.rows,
+      chartLabels: weeklyTrendRes.rows.map(r => r.day),
+      chartData: weeklyTrendRes.rows.map(r => parseFloat(r.total).toFixed(2))
     });
   } catch (err) {
     console.error(err);
-    res.send("Error retrieving dashboard data.");
+    res.send("Error loading dashboard");
   }
 });
+
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
