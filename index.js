@@ -65,8 +65,17 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
 
     const totalSpentRes = await pool.query('SELECT SUM(adjusted_cost) FROM participant_sessions');
     const avgCostRes = await pool.query('SELECT AVG(adjusted_cost) FROM participant_sessions');
-    
-    const weeklyTrendRes = await pool.query(`
+
+    const topParticipantsRes = await pool.query(`
+      SELECT p.name, COUNT(ps.session_id) AS count
+      FROM participants p
+      JOIN participant_sessions ps ON p.participant_id = ps.participant_id
+      GROUP BY p.name
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+
+    const weeklyTrend = await pool.query(`
       SELECT TO_CHAR(s.start_time, 'Dy') AS day, SUM(ps.adjusted_cost) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
@@ -83,14 +92,15 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
       avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
       topParticipants: topParticipantsRes.rows,
-      chartLabels: weeklyTrendRes.rows.map(r => r.day),
-      chartData: weeklyTrendRes.rows.map(r => parseFloat(r.total).toFixed(2))
+      chartLabels: weeklyTrend.rows.map(r => r.day),
+      chartData: weeklyTrend.rows.map(r => parseFloat(r.total).toFixed(2))
     });
   } catch (err) {
     console.error(err);
     res.send("Error loading dashboard");
   }
 });
+
 
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
