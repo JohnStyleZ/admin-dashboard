@@ -44,15 +44,17 @@
     <div class="card p-4 shadow-sm"><h5>Total Spent</h5><p class="fs-4">$<%= totalSpent %></p></div>
   </div>
 
-<div class="row mt-4 justify-content-end">
-  <div class="col-md-3 offset-md-6 mb-4">
-    <div class="col-md-9 mb-4">
-      <div class="card p-3 shadow-sm">
-        <h5 class="mb-3">Session Gender Breakdown</h5>
-        <canvas id="genderChart" height="100"></canvas>
-      </div>
+<div class="row mt-4">
+  <!-- Left Column: Gender Chart -->
+  <div class="col-md-9 mb-4">
+    <div class="card p-3 shadow-sm">
+      <h5 class="mb-3">Session Gender Breakdown</h5>
+      <canvas id="genderChart" height="100"></canvas>
     </div>
+  </div>
 
+  <!-- Right Column: Calendar + Top 10 -->
+  <div class="col-md-3 mb-4">
     <div class="card p-3 shadow-sm">
       <h5 class="mb-2">Post-Events</h5>
       <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
@@ -72,6 +74,7 @@
     </div>
   </div>
 </div>
+
 
 
 
