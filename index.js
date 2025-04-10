@@ -60,6 +60,19 @@ app.post('/admin/login', async (req, res) => {
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
     const totalParticipantsRes = await pool.query('SELECT COUNT(*) FROM participants');
+    const sessionGenderRes = await pool.query(`
+  SELECT 
+    ps.session_id,
+    s.start_time,
+    COUNT(*) FILTER (WHERE p.gender = 'Male') AS male_count,
+    COUNT(*) FILTER (WHERE p.gender = 'Female') AS female_count
+  FROM participant_sessions ps
+  JOIN participants p ON ps.participant_id = p.participant_id
+  JOIN sessions s ON ps.session_id = s.session_id
+  GROUP BY ps.session_id, s.start_time
+  ORDER BY s.start_time ASC
+`);
+
     const maleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Male'");
     const femaleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Female'");
 
@@ -112,6 +125,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
       avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
       topParticipants: topParticipantsRes.rows,
+      sessionGenderData: sessionGenderRes.rows,
       sessionDates,
       dailyChartByMonth: dailyGrouped
 
