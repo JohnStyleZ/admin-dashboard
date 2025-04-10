@@ -75,20 +75,17 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       LIMIT 10
     `);
 
-    const weeklyTrend = await pool.query(`
-      SELECT TO_CHAR(s.start_time, 'Dy') AS day, SUM(ps.adjusted_cost) AS total
+    const monthlyTrendRes = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'Mon YYYY') AS month, SUM(ps.adjusted_cost) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
-      WHERE s.start_time > NOW() - INTERVAL '7 days'
-      GROUP BY day
+      GROUP BY month
       ORDER BY MIN(s.start_time)
     `);
 
     const sessionDatesRes = await pool.query(`
       SELECT DISTINCT DATE(start_time) AS session_date
       FROM sessions
-      WHERE start_time >= date_trunc('month', CURRENT_DATE)
-        AND start_time < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
       ORDER BY session_date;
     `);
 
@@ -102,9 +99,9 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
       avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
       topParticipants: topParticipantsRes.rows,
-      chartLabels: weeklyTrend.rows.map(r => r.day),
-      chartData: weeklyTrend.rows.map(r => parseFloat(r.total).toFixed(2)),
-      sessionDates // Pass dates to calendar
+      chartLabels: monthlyTrendRes.rows.map(r => r.month),
+      chartData: monthlyTrendRes.rows.map(r => parseFloat(r.total).toFixed(2)),
+      sessionDates
     });
   } catch (err) {
     console.error(err);
