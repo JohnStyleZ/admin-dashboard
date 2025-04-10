@@ -75,15 +75,22 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       LIMIT 10
     `);
 
-    const dailyTrendRes = await pool.query(`
-      SELECT DATE(s.start_time) AS date, SUM(ps.adjusted_cost) AS total
+    const dailyMultiMonthTrendRes = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM-DD') AS day,
+             DATE_TRUNC('month', s.start_time) AS month,
+             SUM(ps.adjusted_cost) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
-      WHERE s.start_time >= date_trunc('month', CURRENT_DATE)
-        AND s.start_time < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
-      GROUP BY date
-      ORDER BY date
+      GROUP BY day, month
+      ORDER BY day
     `);
+
+    const dailyGrouped = {};
+    dailyMultiMonthTrendRes.rows.forEach(r => {
+      const key = r.month.toISOString().slice(0, 7); // e.g., "2025-03"
+      if (!dailyGrouped[key]) dailyGrouped[key] = [];
+      dailyGrouped[key].push({ day: r.day, total: parseFloat(r.total) });
+    });
 
     const sessionDatesRes = await pool.query(`
       SELECT DISTINCT DATE(start_time) AS session_date
@@ -92,8 +99,6 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
     `);
 
     const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
-    const chartLabels = dailyTrendRes.rows.map(r => r.date.toISOString().split('T')[0]);
-    const chartData = dailyTrendRes.rows.map(r => parseFloat(r.total).toFixed(2));
 
     res.render('dashboard', {
       admin: req.session.admin,
@@ -103,9 +108,8 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
       avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
       topParticipants: topParticipantsRes.rows,
-      chartLabels,
-      chartData,
-      sessionDates
+      sessionDates,
+      dailyChartByMonth: dailyGrouped
     });
   } catch (err) {
     console.error(err);
