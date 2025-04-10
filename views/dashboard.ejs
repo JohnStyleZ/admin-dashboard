@@ -46,6 +46,13 @@
 
 <div class="row mt-4 justify-content-end">
   <div class="col-md-3 offset-md-6 mb-4">
+    <div class="col-md-9 mb-4">
+      <div class="card p-3 shadow-sm">
+        <h5 class="mb-3">Session Gender Breakdown</h5>
+        <canvas id="genderChart" height="100"></canvas>
+      </div>
+    </div>
+
     <div class="card p-3 shadow-sm">
       <h5 class="mb-2">Post-Events</h5>
       <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
@@ -78,6 +85,38 @@
 </div>
 
 <script>
+  const genderData = <%- JSON.stringify(sessionGenderData) %>;
+  const genderLabels = genderData.map(s => {
+    const date = new Date(s.start_time);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  });
+  const maleCounts = genderData.map(s => s.male_count);
+  const femaleCounts = genderData.map(s => s.female_count);
+
+  const genderCtx = document.getElementById('genderChart').getContext('2d');
+  new Chart(genderCtx, {
+    type: 'bar',
+    data: {
+      labels: genderLabels,
+      datasets: [
+        {
+          label: 'Male',
+          data: maleCounts,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)'
+        },
+        {
+          label: 'Female',
+          data: femaleCounts,
+          backgroundColor: 'rgba(255, 99, 132, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of People' } } }
+    }
+  });
   const sessionDates = <%- JSON.stringify(sessionDates) %>;
   const dailyChartData = <%- JSON.stringify(dailyChartByMonth) %>;
 
