@@ -45,6 +45,7 @@ app.post('/admin/login', async (req, res) => {
     if (result.rows.length > 0) {
       const admin = result.rows[0];
       const isMatch = await bcrypt.compare(password, admin.password_hash);
+      console.log("Password match:", isMatch);
       if (isMatch) {
         req.session.admin = admin;
         return res.redirect('/admin/dashboard');
