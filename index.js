@@ -85,3 +85,8 @@ app.get('/test-db', async (req, res) => {
     res.status(500).send('❌ Failed to connect to DB');
   }
 });
+
+console.log("Submitted username:", username);
+console.log("DB result:", result.rows);
+console.log("Hash to compare:", result.rows[0]?.password_hash);
+console.log("Entered password:", password);
