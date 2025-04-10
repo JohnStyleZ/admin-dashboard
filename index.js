@@ -75,3 +75,13 @@ app.get('/admin/logout', requireAdmin, (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+app.get('/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.send(`✅ Connected to DB. Server time: ${result.rows[0].now}`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('❌ Failed to connect to DB');
+  }
+});
