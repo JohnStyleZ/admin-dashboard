@@ -1,3 +1,33 @@
+@@ -1,62 +1,3 @@
+ require('dotenv').config();
+ const express = require('express');
+ const session = require('express-session');
+ const crypto = require('crypto');
+ const { Pool } = require('pg');
+ const path = require('path');
+ 
+ const app = express();
+ const PORT = process.env.PORT || 3000;
+ 
+ const pool = new Pool({
+   connectionString: process.env.DATABASE_URL,
+   ssl: { rejectUnauthorized: false }
+ });
+ 
+ app.set('views', path.join(__dirname, 'views'));
+ app.set('view engine', 'ejs');
+ app.use(express.urlencoded({ extended: true }));
+ app.use(session({
+   secret: process.env.SESSION_SECRET || 'your-secret-key',
+   resave: false,
+   saveUninitialized: false
+ }));
+ 
+ function requireAdmin(req, res, next) {
+   if (req.session && req.session.admin) next();
+   else res.redirect('/admin/login');
+ }
+
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
     const totalParticipantsRes = await pool.query('SELECT COUNT(*) FROM participants');
