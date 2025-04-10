@@ -136,6 +136,17 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   }
 });
 
+app.get('/admin/analytics', requireAdmin, (req, res) => {
+  res.send('<h1>Analytics Page (Coming Soon)</h1>');
+});
+
+app.get('/admin/reports', requireAdmin, (req, res) => {
+  res.send('<h1>Reports Page (Coming Soon)</h1>');
+});
+
+app.get('/admin/settings', requireAdmin, (req, res) => {
+  res.send('<h1>Settings Page (Coming Soon)</h1>');
+});
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
