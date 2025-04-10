@@ -63,17 +63,18 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
     const maleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Male'");
     const femaleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Female'");
 
-    const totalSpentRes = await pool.query('SELECT SUM(cost) FROM participant_sessions');
-    const avgCostRes = await pool.query('SELECT AVG(cost) FROM participant_sessions');
-
-    const topParticipantsRes = await pool.query(`
-      SELECT p.name, COUNT(ps.session_id) AS count
-      FROM participants p
-      JOIN participant_sessions ps ON p.participant_id = ps.participant_id
-      GROUP BY p.name
-      ORDER BY count DESC
-      LIMIT 10
+    const totalSpentRes = await pool.query('SELECT SUM(adjusted_cost) FROM participant_sessions');
+    const avgCostRes = await pool.query('SELECT AVG(adjusted_cost) FROM participant_sessions');
+    
+    const weeklyTrendRes = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'Dy') AS day, SUM(ps.adjusted_cost) AS total
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      WHERE s.start_time > NOW() - INTERVAL '7 days'
+      GROUP BY day
+      ORDER BY MIN(s.start_time)
     `);
+
 
     const weeklyTrendRes = await pool.query(`
       SELECT TO_CHAR(s.start_time, 'Dy') AS day, SUM(ps.cost) AS total
