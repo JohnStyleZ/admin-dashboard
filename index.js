@@ -84,6 +84,16 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       ORDER BY MIN(s.start_time)
     `);
 
+    const sessionDatesRes = await pool.query(`
+      SELECT DISTINCT DATE(start_time) AS session_date
+      FROM sessions
+      WHERE start_time >= date_trunc('month', CURRENT_DATE)
+        AND start_time < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+      ORDER BY session_date;
+    `);
+
+    const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
+
     res.render('dashboard', {
       admin: req.session.admin,
       totalParticipants: totalParticipantsRes.rows[0].count,
@@ -93,15 +103,14 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
       topParticipants: topParticipantsRes.rows,
       chartLabels: weeklyTrend.rows.map(r => r.day),
-      chartData: weeklyTrend.rows.map(r => parseFloat(r.total).toFixed(2))
+      chartData: weeklyTrend.rows.map(r => parseFloat(r.total).toFixed(2)),
+      sessionDates // Pass dates to calendar
     });
   } catch (err) {
     console.error(err);
     res.send("Error loading dashboard");
   }
 });
-
-
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
