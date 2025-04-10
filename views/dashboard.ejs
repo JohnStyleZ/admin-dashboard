@@ -182,18 +182,9 @@
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false, // ← Add this line
-      plugins: {
-        legend: { position: 'top' }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: 'Number of People' }
-        }
-      }
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
     }
-
   });
 
   function updateChart(monthKey) {
