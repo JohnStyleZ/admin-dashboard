@@ -49,7 +49,7 @@
   <div class="col-md-9 mb-4">
     <div class="card p-3 shadow-sm">
       <h5 class="mb-3">Session Gender Breakdown</h5>
-      <canvas id="genderChart" style="height: 500px;"></canvas>
+      <canvas id="genderChart" height="100"></canvas>
     </div>
   </div>
 
@@ -116,6 +116,7 @@
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { position: 'top' } },
       scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of People' } } }
     }
