@@ -75,16 +75,6 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       ORDER BY MIN(s.start_time)
     `);
 
-
-    const weeklyTrendRes = await pool.query(`
-      SELECT TO_CHAR(s.start_time, 'Dy') AS day, SUM(ps.cost) AS total
-      FROM participant_sessions ps
-      JOIN sessions s ON ps.session_id = s.session_id
-      WHERE s.start_time > NOW() - INTERVAL '7 days'
-      GROUP BY day
-      ORDER BY MIN(s.start_time)
-    `);
-
     res.render('dashboard', {
       admin: req.session.admin,
       totalParticipants: totalParticipantsRes.rows[0].count,
