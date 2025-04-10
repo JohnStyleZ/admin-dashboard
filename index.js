@@ -75,12 +75,14 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       LIMIT 10
     `);
 
-    const monthlyTrendRes = await pool.query(`
-      SELECT TO_CHAR(s.start_time, 'Mon YYYY') AS month, SUM(ps.adjusted_cost) AS total
+    const dailyTrendRes = await pool.query(`
+      SELECT DATE(s.start_time) AS date, SUM(ps.adjusted_cost) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
-      GROUP BY month
-      ORDER BY MIN(s.start_time)
+      WHERE s.start_time >= date_trunc('month', CURRENT_DATE)
+        AND s.start_time < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+      GROUP BY date
+      ORDER BY date
     `);
 
     const sessionDatesRes = await pool.query(`
@@ -90,6 +92,8 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
     `);
 
     const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
+    const chartLabels = dailyTrendRes.rows.map(r => r.date.toISOString().split('T')[0]);
+    const chartData = dailyTrendRes.rows.map(r => parseFloat(r.total).toFixed(2));
 
     res.render('dashboard', {
       admin: req.session.admin,
@@ -99,8 +103,8 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
       avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
       topParticipants: topParticipantsRes.rows,
-      chartLabels: monthlyTrendRes.rows.map(r => r.month),
-      chartData: monthlyTrendRes.rows.map(r => parseFloat(r.total).toFixed(2)),
+      chartLabels,
+      chartData,
       sessionDates
     });
   } catch (err) {
@@ -108,6 +112,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
     res.send("Error loading dashboard");
   }
 });
+
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
