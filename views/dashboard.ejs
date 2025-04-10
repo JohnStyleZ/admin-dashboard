@@ -29,7 +29,13 @@
       box-sizing: border-box;
       text-align: center;
     }
-    
+    #calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      min-height: 198px; /* 6 rows × 33px each */
+    }
+
     .calendar-day.session {
       background-color: #0d6efd;
       color: #fff;
