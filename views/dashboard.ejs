@@ -47,11 +47,7 @@
   <div class="row mt-4">
     <div class="col-md-4 mb-4">
       <div class="card p-3 shadow-sm">
-        <h5 class="mb-2">Post-Events</h5>
-        <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
-        <div id="calendar"></div>
-        <hr>
-        <h6>Top 10 Participants</h6>
+        <h5 class="mb-2">Top 10 Participants</h5>
         <ol class="mt-2 small">
           <% topParticipants.forEach(p => { %>
             <li><%= p.name %> - <%= p.count %> sessions</li>
@@ -60,50 +56,53 @@
       </div>
     </div>
 
-    <div class="col-md-8 mb-4">
+    <div class="col-md-4 offset-md-4 mb-4">
       <div class="card p-3 shadow-sm">
-        <h5 class="mb-3">Sessions by Group Size & Gender</h5>
-        <canvas id="groupSizeChart" height="180"></canvas>
-      </div>
-
-      <div class="card p-4 shadow-sm mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0">Daily Spend - Current Month</h5>
-          <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
-        </div>
-        <canvas id="trendChart" height="100"></canvas>
+        <h5 class="mb-2">Post-Events</h5>
+        <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
+        <div id="calendar"></div>
       </div>
     </div>
+  </div>
+
+  <div class="card p-4 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Daily Spend - Current Month</h5>
+      <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
+    </div>
+    <canvas id="trendChart" height="100"></canvas>
   </div>
 </div>
 
 <script>
   const sessionDates = <%- JSON.stringify(sessionDates) %>;
   const dailyChartData = <%- JSON.stringify(dailyChartByMonth) %>;
-  const groupSizeLabels = <%- JSON.stringify(groupSizeLabels) %>;
-  const groupSizeMale = <%- JSON.stringify(groupSizeMale) %>;
-  const groupSizeFemale = <%- JSON.stringify(groupSizeFemale) %>;
 
-  // Calendar Logic
+  // Calendar logic
   function populateCalendar(year, month) {
     const container = document.getElementById("calendar");
     container.innerHTML = "";
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     for (let i = 0; i < firstDay; i++) {
       const blank = document.createElement("div");
       blank.classList.add("calendar-day", "blank");
       container.appendChild(blank);
     }
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
       const dayEl = document.createElement("div");
       dayEl.classList.add("calendar-day");
-      if (sessionDates.includes(dateStr)) dayEl.classList.add("session");
+      if (sessionDates.includes(dateStr)) {
+        dayEl.classList.add("session");
+      }
       dayEl.textContent = day;
       container.appendChild(dayEl);
     }
   }
+
   function setupCalendarDropdown() {
     const now = new Date();
     const select = document.getElementById("calendarMonth");
@@ -114,26 +113,42 @@
       option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
       select.appendChild(option);
     }
+
     select.value = now.getFullYear() + "-" + now.getMonth();
     select.addEventListener("change", e => {
       const [y, m] = e.target.value.split("-").map(Number);
       populateCalendar(y, m);
     });
+
     populateCalendar(now.getFullYear(), now.getMonth());
   }
 
-  // Daily Spending Chart
-  const trendChart = new Chart(document.getElementById('trendChart').getContext('2d'), {
+  // Chart logic
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  const chart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: [], datasets: [{ label: 'Daily Spend ($)', data: [], backgroundColor: '#0d6efd' }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Daily Spend ($)',
+        data: [],
+        backgroundColor: '#0d6efd'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
   });
+
   function updateChart(monthKey) {
     const data = dailyChartData[monthKey] || [];
-    trendChart.data.labels = data.map(d => d.day);
-    trendChart.data.datasets[0].data = data.map(d => d.total.toFixed(2));
-    trendChart.update();
+    chart.data.labels = data.map(d => d.day);
+    chart.data.datasets[0].data = data.map(d => d.total.toFixed(2));
+    chart.update();
   }
+
   function setupChartDropdown() {
     const now = new Date();
     const select = document.getElementById("chartMonth");
@@ -145,32 +160,17 @@
       option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
       select.appendChild(option);
     }
+
     select.value = now.getFullYear() + "-" + now.getMonth();
     select.addEventListener("change", e => {
       const [y, m] = e.target.value.split("-").map(Number);
       const key = y + '-' + String(m + 1).padStart(2, '0');
       updateChart(key);
     });
+
     const defaultKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
     updateChart(defaultKey);
   }
-
-  // Group Size Chart
-  new Chart(document.getElementById('groupSizeChart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: groupSizeLabels,
-      datasets: [
-        { label: 'Male', data: groupSizeMale, backgroundColor: '#007bff' },
-        { label: 'Female', data: groupSizeFemale, backgroundColor: '#e83e8c' }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: { title: { display: false }, legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
 
   setupCalendarDropdown();
   setupChartDropdown();
