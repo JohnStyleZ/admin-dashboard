@@ -5,67 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js">
-  function populateMonthSelector(selectEl, callback) {
-    const today = new Date();
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const option = document.createElement("option");
-      option.value = d.getFullYear() + "-" + d.getMonth();
-      option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      selectEl.appendChild(option);
-    }
-    selectEl.value = today.getFullYear() + "-" + today.getMonth();
-    selectEl.addEventListener("change", (e) => {
-      const [y, m] = e.target.value.split("-").map(Number);
-      callback(y, m);
-    });
-  }
-
-  populateMonthSelector(document.getElementById("calendarMonth"), (y, m) => {
-    calendarContainer.innerHTML = "";
-    const firstDay = new Date(y, m, 1).getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) {
-      const blank = document.createElement("div");
-      blank.classList.add("calendar-day", "blank");
-      calendarContainer.appendChild(blank);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-      const dayEl = document.createElement("div");
-      dayEl.classList.add("calendar-day");
-      if (sessionDates.includes(dateStr)) {
-        dayEl.classList.add("session");
-      }
-      dayEl.textContent = day;
-      calendarContainer.appendChild(dayEl);
-    }
-  });
-
-  
-  function updateChart(monthKey) {
-    const data = dailyChartData[monthKey] || [];
-    chart.data.labels = data.map(d => d.day);
-    chart.data.datasets[0].data = data.map(d => d.total.toFixed(2));
-    chart.update();
-  }
-
-  populateMonthSelector(document.getElementById("chartMonth"), (y, m) => {
-    const key = y + '-' + String(m + 1).padStart(2, '0');
-    updateChart(key);
-  });
-
-  const now = new Date();
-  updateChart(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
-
-    // NOTE: This is placeholder only. In real app you'd request updated data from the backend.
-    console.log("Switch chart to:", y, m);
-  });
-</script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
     .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; }
@@ -74,31 +14,14 @@
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
     .main { margin-left: 250px; padding: 30px; }
     .card { border: none; border-radius: 10px; }
-    .card h5 { font-weight: 600; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-
-    #calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 3px;
-    }
     .calendar-day {
-      background: #fff;
-      border: 1px solid #dee2e6;
-      padding: 6px;
-      text-align: center;
-      border-radius: 4px;
-      font-size: 12px;
+      background: #fff; border: 1px solid #dee2e6;
+      padding: 6px; text-align: center; border-radius: 4px; font-size: 12px;
     }
-    .calendar-day.session {
-      background-color: #0d6efd;
-      color: #fff;
-      font-weight: bold;
-    }
-    .calendar-day.blank {
-      background: none;
-      border: none;
-    }
+    .calendar-day.session { background-color: #0d6efd; color: #fff; font-weight: bold; }
+    .calendar-day.blank { background: none; border: none; }
+    #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
   </style>
 </head>
 <body>
@@ -115,22 +38,10 @@
 <div class="main">
   <h2 class="mb-4">Welcome, <%= admin.username %></h2>
   <div class="stats-grid">
-    <div class="card p-4 shadow-sm">
-      <h5>Total Participants</h5>
-      <p class="fs-4"><%= totalParticipants %></p>
-    </div>
-    <div class="card p-4 shadow-sm">
-      <h5>Gender Ratio</h5>
-      <p>👨 <%= maleCount %> | 👩 <%= femaleCount %></p>
-    </div>
-    <div class="card p-4 shadow-sm">
-      <h5>Average Cost per Person</h5>
-      <p class="fs-4">$<%= avgCost %></p>
-    </div>
-    <div class="card p-4 shadow-sm">
-      <h5>Total Spent</h5>
-      <p class="fs-4">$<%= totalSpent %></p>
-    </div>
+    <div class="card p-4 shadow-sm"><h5>Total Participants</h5><p class="fs-4"><%= totalParticipants %></p></div>
+    <div class="card p-4 shadow-sm"><h5>Gender Ratio</h5><p>👨 <%= maleCount %> | 👩 <%= femaleCount %></p></div>
+    <div class="card p-4 shadow-sm"><h5>Average Cost per Person</h5><p class="fs-4">$<%= avgCost %></p></div>
+    <div class="card p-4 shadow-sm"><h5>Total Spent</h5><p class="fs-4">$<%= totalSpent %></p></div>
   </div>
 
   <div class="row mt-4">
@@ -148,7 +59,6 @@
     <div class="col-md-4 offset-md-4 mb-4">
       <div class="card p-3 shadow-sm">
         <h5 class="mb-2">Post-Events</h5>
-<select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
         <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
         <div id="calendar"></div>
       </div>
@@ -158,109 +68,80 @@
   <div class="card p-4 shadow-sm">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Daily Spend - Current Month</h5>
-<select id="chartMonth" class="form-select form-select-sm w-auto"></select>
+      <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
     </div>
-    <canvas id="trendChart"></canvas>
+    <canvas id="trendChart" height="100"></canvas>
   </div>
 </div>
 
 <script>
   const sessionDates = <%- JSON.stringify(sessionDates) %>;
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-
-  const calendarContainer = document.getElementById("calendar");
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  for (let i = 0; i < firstDay; i++) {
-    const blank = document.createElement("div");
-    blank.classList.add("calendar-day", "blank");
-    calendarContainer.appendChild(blank);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-    const dayEl = document.createElement("div");
-    dayEl.classList.add("calendar-day");
-    if (sessionDates.includes(dateStr)) {
-      dayEl.classList.add("session");
-    }
-    dayEl.textContent = day;
-    calendarContainer.appendChild(dayEl);
-  }
-
   const dailyChartData = <%- JSON.stringify(dailyChartByMonth) %>;
-  
 
-  
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  const chart = new Chart(ctx, {
-
-    type: 'bar',
-    data: {
-      labels: chartLabels,
-      datasets: [{
-        label: 'Daily Spend ($)',
-        data: chartData,
-        backgroundColor: '#0d6efd'
-      }]
-    },
-    options: {
-      
-      responsive: true,
-      animation: false,
-
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: { beginAtZero: true }
-      }
-    }
-  });
-
-  function populateMonthSelector(selectEl, callback) {
-    const today = new Date();
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const option = document.createElement("option");
-      option.value = d.getFullYear() + "-" + d.getMonth();
-      option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      selectEl.appendChild(option);
-    }
-    selectEl.value = today.getFullYear() + "-" + today.getMonth();
-    selectEl.addEventListener("change", (e) => {
-      const [y, m] = e.target.value.split("-").map(Number);
-      callback(y, m);
-    });
-  }
-
-  populateMonthSelector(document.getElementById("calendarMonth"), (y, m) => {
-    calendarContainer.innerHTML = "";
-    const firstDay = new Date(y, m, 1).getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
+  // Calendar logic
+  function populateCalendar(year, month) {
+    const container = document.getElementById("calendar");
+    container.innerHTML = "";
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     for (let i = 0; i < firstDay; i++) {
       const blank = document.createElement("div");
       blank.classList.add("calendar-day", "blank");
-      calendarContainer.appendChild(blank);
+      container.appendChild(blank);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
       const dayEl = document.createElement("div");
       dayEl.classList.add("calendar-day");
       if (sessionDates.includes(dateStr)) {
         dayEl.classList.add("session");
       }
       dayEl.textContent = day;
-      calendarContainer.appendChild(dayEl);
+      container.appendChild(dayEl);
+    }
+  }
+
+  function setupCalendarDropdown() {
+    const now = new Date();
+    const select = document.getElementById("calendarMonth");
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const option = document.createElement("option");
+      option.value = d.getFullYear() + "-" + d.getMonth();
+      option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      select.appendChild(option);
+    }
+
+    select.value = now.getFullYear() + "-" + now.getMonth();
+    select.addEventListener("change", e => {
+      const [y, m] = e.target.value.split("-").map(Number);
+      populateCalendar(y, m);
+    });
+
+    populateCalendar(now.getFullYear(), now.getMonth());
+  }
+
+  // Chart logic
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Daily Spend ($)',
+        data: [],
+        backgroundColor: '#0d6efd'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
     }
   });
 
-  
   function updateChart(monthKey) {
     const data = dailyChartData[monthKey] || [];
     chart.data.labels = data.map(d => d.day);
@@ -268,19 +149,31 @@
     chart.update();
   }
 
-  populateMonthSelector(document.getElementById("chartMonth"), (y, m) => {
-    const key = y + '-' + String(m + 1).padStart(2, '0');
-    updateChart(key);
-  });
+  function setupChartDropdown() {
+    const now = new Date();
+    const select = document.getElementById("chartMonth");
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.getFullYear() + "-" + d.getMonth();
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      select.appendChild(option);
+    }
 
-  const now = new Date();
-  updateChart(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    select.value = now.getFullYear() + "-" + now.getMonth();
+    select.addEventListener("change", e => {
+      const [y, m] = e.target.value.split("-").map(Number);
+      const key = y + '-' + String(m + 1).padStart(2, '0');
+      updateChart(key);
+    });
 
-    // NOTE: This is placeholder only. In real app you'd request updated data from the backend.
-    console.log("Switch chart to:", y, m);
-  });
+    const defaultKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    updateChart(defaultKey);
+  }
+
+  setupCalendarDropdown();
+  setupChartDropdown();
 </script>
-
-
 </body>
 </html>
