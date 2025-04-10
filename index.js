@@ -16,7 +16,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       LIMIT 10
     `);
 
-    const dailyMultiMonthTrendRes = await pool.query(\`
+    const dailyMultiMonthTrendRes = await pool.query(`
       SELECT TO_CHAR(s.start_time, 'YYYY-MM-DD') AS day,
              DATE_TRUNC('month', s.start_time) AS month,
              SUM(ps.adjusted_cost) AS total
@@ -24,7 +24,8 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       JOIN sessions s ON ps.session_id = s.session_id
       GROUP BY day, month
       ORDER BY day
-    \`);
+    `);
+
 
     const dailyGrouped = {};
     dailyMultiMonthTrendRes.rows.forEach(r => {
