@@ -1,32 +1,3 @@
- require('dotenv').config();
- const express = require('express');
- const session = require('express-session');
- const crypto = require('crypto');
- const { Pool } = require('pg');
- const path = require('path');
- 
- const app = express();
- const PORT = process.env.PORT || 3000;
- 
- const pool = new Pool({
-   connectionString: process.env.DATABASE_URL,
-   ssl: { rejectUnauthorized: false }
- });
- 
- app.set('views', path.join(__dirname, 'views'));
- app.set('view engine', 'ejs');
- app.use(express.urlencoded({ extended: true }));
- app.use(session({
-   secret: process.env.SESSION_SECRET || 'your-secret-key',
-   resave: false,
-   saveUninitialized: false
- }));
- 
- function requireAdmin(req, res, next) {
-   if (req.session && req.session.admin) next();
-   else res.redirect('/admin/login');
- }
-
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
     const totalParticipantsRes = await pool.query('SELECT COUNT(*) FROM participants');
@@ -45,7 +16,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       LIMIT 10
     `);
 
-    const dailyMultiMonthTrendRes = await pool.query(`
+    const dailyMultiMonthTrendRes = await pool.query(\`
       SELECT TO_CHAR(s.start_time, 'YYYY-MM-DD') AS day,
              DATE_TRUNC('month', s.start_time) AS month,
              SUM(ps.adjusted_cost) AS total
@@ -53,7 +24,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       JOIN sessions s ON ps.session_id = s.session_id
       GROUP BY day, month
       ORDER BY day
-    `);
+    \`);
 
     const dailyGrouped = {};
     dailyMultiMonthTrendRes.rows.forEach(r => {
@@ -62,15 +33,15 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       dailyGrouped[key].push({ day: r.day, total: parseFloat(r.total) });
     });
 
-    const sessionDatesRes = await pool.query(`
+    const sessionDatesRes = await pool.query(\`
       SELECT DISTINCT DATE(start_time) AS session_date
       FROM sessions
       ORDER BY session_date;
-    `);
+    \`);
 
     const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
 
-    const groupSizeQuery = await pool.query(`
+    const groupSizeQuery = await pool.query(\`
       SELECT s.session_id,
              COUNT(*) FILTER (WHERE p.gender = 'Male') AS male_count,
              COUNT(*) FILTER (WHERE p.gender = 'Female') AS female_count
@@ -78,7 +49,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
       JOIN participant_sessions ps ON s.session_id = ps.session_id
       JOIN participants p ON ps.participant_id = p.participant_id
       GROUP BY s.session_id
-    `);
+    \`);
 
     const groupSizeBuckets = {
       "1–3": { male: 0, female: 0 },
