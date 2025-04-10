@@ -15,33 +15,41 @@
     .main { margin-left: 250px; padding: 30px; }
     .card { border: none; border-radius: 10px; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-
     .calendar-day {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 32px;
-      height: 32px;
-      line-height: 1;
-      box-sizing: border-box;
-      text-align: center;
+      background: #fff; border: 1px solid #dee2e6;
+      padding: 6px; text-align: center; border-radius: 4px; font-size: 12px;
     }
     #calendar {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr); /* ← Force 6 rows always */
       gap: 3px;
-      min-height: 198px; /* 6 rows × 33px each */
+      height: 210px; /* 6 rows × 35px */
     }
-
+    
+    .calendar-day {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      border-radius: 4px;
+      height: 100%;     /* ← Fills the row completely */
+      width: 100%;      /* ← Fills the column */
+      box-sizing: border-box;
+    }
+    
     .calendar-day.session {
       background-color: #0d6efd;
       color: #fff;
       font-weight: bold;
     }
-
-    .calendar-day.session { background-color: #0d6efd; color: #fff; font-weight: bold; }
-    .calendar-day.blank { background: none; border: none; }
-    #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    
+    .calendar-day.blank {
+      background: none;
+      border: none;
+    }
   </style>
 </head>
 <body>
