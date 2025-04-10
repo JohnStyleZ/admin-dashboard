@@ -33,8 +33,15 @@ app.get('/admin/login', (req, res) => {
 
 app.post('/admin/login', async (req, res) => {
   const { username, password } = req.body;
+
+  // ✅ Put logs here — inside this route handler
+  console.log("Submitted username:", username);
+  console.log("Entered password:", password);
+
   try {
     const result = await pool.query('SELECT * FROM admins WHERE username = $1', [username]);
+    console.log("DB result:", result.rows);
+
     if (result.rows.length > 0) {
       const admin = result.rows[0];
       const isMatch = await bcrypt.compare(password, admin.password_hash);
@@ -49,6 +56,7 @@ app.post('/admin/login', async (req, res) => {
     res.render('login', { error: 'An error occurred. Try again later.' });
   }
 });
+
 
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
@@ -85,8 +93,3 @@ app.get('/test-db', async (req, res) => {
     res.status(500).send('❌ Failed to connect to DB');
   }
 });
-
-console.log("Submitted username:", username);
-console.log("DB result:", result.rows);
-console.log("Hash to compare:", result.rows[0]?.password_hash);
-console.log("Entered password:", password);
