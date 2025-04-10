@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 const path = require('path');
 
@@ -33,8 +33,6 @@ app.get('/admin/login', (req, res) => {
 
 app.post('/admin/login', async (req, res) => {
   const { username, password } = req.body;
-
-  // ✅ Put logs here — inside this route handler
   console.log("Submitted username:", username);
   console.log("Entered password:", password);
 
@@ -44,9 +42,10 @@ app.post('/admin/login', async (req, res) => {
 
     if (result.rows.length > 0) {
       const admin = result.rows[0];
-      const isMatch = await crypto.createHash('sha256').compare(password, admin.password_hash);
-      console.log("Password match:", isMatch);
-      if (isMatch) {
+      const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+      console.log("Password hash:", passwordHash);
+
+      if (passwordHash === admin.password_hash) {
         req.session.admin = admin;
         return res.redirect('/admin/dashboard');
       }
@@ -58,7 +57,6 @@ app.post('/admin/login', async (req, res) => {
   }
 });
 
-
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
     const participantsResult = await pool.query('SELECT COUNT(*) AS total FROM participants');
@@ -66,7 +64,9 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
     res.render('dashboard', {
       admin: req.session.admin,
       totalParticipants: participantsResult.rows[0].total,
-      totalSessions: sessionsResult.rows[0].total
+      totalSessions: sessionsResult.rows[0].total,
+      chartLabels: [],
+      chartData: []
     });
   } catch (err) {
     console.error(err);
@@ -81,16 +81,10 @@ app.get('/admin/logout', requireAdmin, (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.get('/', (req, res) => {
+  res.redirect('/admin/login');
 });
 
-app.get('/test-db', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    res.send(`✅ Connected to DB. Server time: ${result.rows[0].now}`);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('❌ Failed to connect to DB');
-  }
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
