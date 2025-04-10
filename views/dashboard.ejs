@@ -6,6 +6,7 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     .summary { margin-top: 20px; }
+    canvas { max-width: 600px; margin-top: 20px; }
     a { text-decoration: none; color: #007bff; }
     a:hover { text-decoration: underline; }
   </style>
@@ -15,7 +16,29 @@
   <div class="summary">
     <p>Total Participants: <%= totalParticipants %></p>
     <p>Total Sessions: <%= totalSessions %></p>
+    <p><a href="/admin/settings">Edit Settings</a></p>
+    <p><a href="/admin/logout">Logout</a></p>
   </div>
-  <p><a href="/admin/logout">Logout</a></p>
+  <canvas id="sessionChart" width="600" height="300"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ctx = document.getElementById('sessionChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: <%- JSON.stringify(chartLabels) %>,
+        datasets: [{
+          label: 'Sessions Per Month',
+          data: <%- JSON.stringify(chartData) %>,
+          backgroundColor: 'rgba(0, 123, 255, 0.6)'
+        }]
+      },
+      options: {
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
 </body>
 </html>
