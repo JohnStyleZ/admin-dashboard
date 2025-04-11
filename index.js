@@ -254,30 +254,27 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
 
 // Route to render settings page
 app.get('/admin/settings', requireAdmin, async (req, res) => {
-  try {
-    const adminId = req.session.admin.admin_id;
-    const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
-    const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
+  const adminId = req.session.admin.admin_id;
+  const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
+  const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
 
-    const selectedLocationId = req.query.location_id || adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
+  const selectedLocationId = adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
 
-    const rateSettingsRes = await pool.query(
-      `SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY id`,
-      [selectedLocationId]
-    );
+  // ✅ Fetch rates for the selected location
+  const ratesRes = await pool.query(
+    'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
+    [selectedLocationId]
+  );
 
-    res.render('settings', {
-      title: 'Settings',
-      admin: adminRes.rows[0],
-      locations: locationsRes.rows,
-      selectedLocationId,
-      rateSettings: rateSettingsRes.rows
-    });
-  } catch (err) {
-    console.error(err);
-    res.send("Error loading settings");
-  }
+  res.render('settings', {
+    title: 'Settings',
+    admin: adminRes.rows[0],
+    locations: locationsRes.rows,
+    selectedLocationId,
+    rates: ratesRes.rows // ✅ pass this to the template
+  });
 });
+
 
 // Route to update rates
 app.post('/admin/settings/update-rates', async (req, res) => {
