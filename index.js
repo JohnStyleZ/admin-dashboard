@@ -64,7 +64,7 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
 });
 
 app.get('/admin/settings', requireAdmin, async (req, res) => {
-  const adminId = req.session.admin.admin_id;
+  const adminId = req.session.admin_id;
   const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
   const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
   const selectedLocationId = adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
@@ -78,6 +78,7 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
     rates: ratesRes.rows
   });
 });
+
 
 app.post('/admin/settings/save-rates', requireAdmin, async (req, res) => {
   const { location_id } = req.body;
