@@ -229,9 +229,7 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
     rates: ratesRes.rows,
     message,
     participants: participantsRes.rows,
-    message: req.session.message || null
   });
-  req.session.message = null;
 });
 
 // --- Profile Update ---
@@ -339,31 +337,6 @@ app.post('/admin/settings/update-participants', requireAdmin, async (req, res) =
   }
 });
 
-// Add a new participant
-app.post('/admin/settings/add-participant', requireAdmin, async (req, res) => {
-  const { name, gender } = req.body;
-  try {
-    await pool.query('INSERT INTO participants (name, gender) VALUES ($1, $2)', [name, gender]);
-    req.session.message = '✅ Participant added successfully.';
-  } catch (err) {
-    console.error('Error adding participant:', err);
-    req.session.message = '❌ Failed to add participant.';
-  }
-  res.redirect('/admin/settings');
-});
-
-// Delete a participant
-app.post('/admin/settings/delete-participant', requireAdmin, async (req, res) => {
-  const { participant_id } = req.body;
-  try {
-    await pool.query('DELETE FROM participants WHERE participant_id = $1', [participant_id]);
-    req.session.message = '🗑️ Participant deleted.';
-  } catch (err) {
-    console.error('Error deleting participant:', err);
-    req.session.message = '❌ Cannot delete participant.';
-  }
-  res.redirect('/admin/settings');
-});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
