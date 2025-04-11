@@ -252,34 +252,54 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
   res.render('reports', { admin: req.session.admin, title: 'Reports' });
 });
 
-app.get('/admin/settings', async (req, res) => {
-  const adminId = req.session.admin_id;
-  if (!adminId) return res.redirect('/admin/login');
+// Route to render settings page
+app.get('/admin/settings', requireAdmin, async (req, res) => {
+  try {
+    const adminId = req.session.admin.admin_id;
+    const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
+    const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
 
-  const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
-  const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
-  const rateSettingsRes = await pool.query('SELECT * FROM rate_settings ORDER BY id');
+    const selectedLocationId = req.query.location_id || adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
 
-  res.render('settings', {
-    title: 'Settings',
-    admin: adminRes.rows[0],
-    locations: locationsRes.rows,
-    rateSettings: rateSettingsRes.rows
-  });
+    const rateSettingsRes = await pool.query(
+      `SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY id`,
+      [selectedLocationId]
+    );
+
+    res.render('settings', {
+      title: 'Settings',
+      admin: adminRes.rows[0],
+      locations: locationsRes.rows,
+      selectedLocationId,
+      rateSettings: rateSettingsRes.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.send("Error loading settings");
+  }
 });
 
+// Route to update rates
 app.post('/admin/settings/update-rates', async (req, res) => {
-  const count = parseInt(req.body.count || 0);
-  for (let i = 0; i < count; i++) {
-    const range = req.body[`range_${i}`];
-    const day = parseInt(req.body[`day_${i}`]);
-    const night = parseInt(req.body[`night_${i}`]);
-    await pool.query(
-      'UPDATE rate_settings SET day_rate = $1, night_rate = $2 WHERE range_label = $3',
-      [day, night, range]
-    );
+  try {
+    const { location_id } = req.body;
+    const updates = Object.entries(req.body)
+      .filter(([key]) => key.startsWith('rateId_'))
+      .map(([key, id]) => {
+        const dayRate = req.body[`dayRate_${id}`];
+        const nightRate = req.body[`nightRate_${id}`];
+        return pool.query(
+          'UPDATE rate_settings SET day_rate = $1, night_rate = $2 WHERE id = $3 AND location_id = $4',
+          [dayRate, nightRate, id, location_id]
+        );
+      });
+
+    await Promise.all(updates);
+    res.redirect(`/admin/settings?location_id=${location_id}`);
+  } catch (err) {
+    console.error(err);
+    res.send("Error updating rates");
   }
-  res.redirect('/admin/settings');
 });
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
