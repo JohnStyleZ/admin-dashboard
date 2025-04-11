@@ -53,6 +53,18 @@
         <div style="height: 250px;"><canvas id="genderTrendChart"></canvas></div>
       </div>
     </div>
+    <div class="col-md-6">
+      <div class="card p-3 shadow-sm">
+        <h5>📆 Sessions Per Month</h5>
+        <div style="height: 250px;"><canvas id="sessionsMonthChart"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3 shadow-sm">
+        <h5>💰 Total Spending Per Month</h5>
+        <div style="height: 250px;"><canvas id="spendingMonthChart"></canvas></div>
+      </div>
+    </div>
     <div class="col-md-12">
       <div class="card p-3 shadow-sm">
         <h5>👤 New vs Returning Participants</h5>
@@ -69,6 +81,8 @@
   const groupSizeData = <%- JSON.stringify(groupSizes) %>;
   const genderTrends = <%- JSON.stringify(genderTrends) %>;
   const returnData = <%- JSON.stringify(newVsReturning) %>;
+  const sessionsPerMonth = <%- JSON.stringify(sessionsPerMonth) %>;
+  const spendingPerMonth = <%- JSON.stringify(spendingPerMonth) %>;
 
   new Chart(document.getElementById('peakHourChart'), {
     type: 'bar',
@@ -127,7 +141,24 @@
     data: { labels: returnMonths, datasets: returnDatasets },
     options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }
   });
+
+  new Chart(document.getElementById('sessionsMonthChart'), {
+    type: 'bar',
+    data: {
+      labels: sessionsPerMonth.map(r => r.month),
+      datasets: [{ label: 'Sessions', data: sessionsPerMonth.map(r => r.total_sessions), backgroundColor: '#0dcaf0' }]
+    }
+  });
+
+  new Chart(document.getElementById('spendingMonthChart'), {
+    type: 'bar',
+    data: {
+      labels: spendingPerMonth.map(r => r.month),
+      datasets: [{ label: 'Total Spent ($)', data: spendingPerMonth.map(r => r.total_spent), backgroundColor: '#fd7e14' }]
+    }
+  });
 </script>
+
 
 
 </body>
