@@ -258,14 +258,29 @@ app.get('/admin/settings', async (req, res) => {
 
   const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
   const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
+  const rateSettingsRes = await pool.query('SELECT * FROM rate_settings ORDER BY id');
 
   res.render('settings', {
     title: 'Settings',
     admin: adminRes.rows[0],
-    locations: locationsRes.rows
+    locations: locationsRes.rows,
+    rateSettings: rateSettingsRes.rows
   });
 });
 
+app.post('/admin/settings/update-rates', async (req, res) => {
+  const count = parseInt(req.body.count || 0);
+  for (let i = 0; i < count; i++) {
+    const range = req.body[`range_${i}`];
+    const day = parseInt(req.body[`day_${i}`]);
+    const night = parseInt(req.body[`night_${i}`]);
+    await pool.query(
+      'UPDATE rate_settings SET day_rate = $1, night_rate = $2 WHERE range_label = $3',
+      [day, night, range]
+    );
+  }
+  res.redirect('/admin/settings');
+});
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
