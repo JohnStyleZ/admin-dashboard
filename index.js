@@ -23,25 +23,30 @@ app.use(session({
 }));
 
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.admin_id) next();
+  if (req.session && req.session.admin) next();
   else res.redirect('/admin/login');
 }
 
-// Login
 app.get('/admin/login', (req, res) => {
   res.render('login', { error: null });
 });
 
 app.post('/admin/login', async (req, res) => {
   const { username, password } = req.body;
+  console.log("Submitted username:", username);
+  console.log("Entered password:", password);
+
   try {
     const result = await pool.query('SELECT * FROM admins WHERE username = $1', [username]);
+    console.log("DB result:", result.rows);
+
     if (result.rows.length > 0) {
       const admin = result.rows[0];
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+      console.log("Password hash:", passwordHash);
+
       if (passwordHash === admin.password_hash) {
         req.session.admin = admin;
-        req.session.admin_id = admin.admin_id;
         return res.redirect('/admin/dashboard');
       }
     }
@@ -52,104 +57,98 @@ app.post('/admin/login', async (req, res) => {
   }
 });
 
-// Email update
-app.post('/admin/settings/update-profile', async (req, res) => {
-  const { email } = req.body;
-  const adminId = req.session.admin_id;
-  await pool.query('UPDATE admins SET email = $1 WHERE admin_id = $2', [email, adminId]);
-  res.redirect('/admin/settings');
-});
-
-// Password update
-app.post('/admin/settings/update-password', async (req, res) => {
-  const { current_password, new_password } = req.body;
-  const adminId = req.session.admin_id;
-  const result = await pool.query('SELECT password_hash FROM admins WHERE admin_id = $1', [adminId]);
-  const hashCurrent = crypto.createHash('sha256').update(current_password).digest('hex');
-
-  if (result.rows[0].password_hash === hashCurrent) {
-    const hashNew = crypto.createHash('sha256').update(new_password).digest('hex');
-    await pool.query('UPDATE admins SET password_hash = $1 WHERE admin_id = $2', [hashNew, adminId]);
-  }
-  res.redirect('/admin/settings');
-});
-
-// Add location
-app.post('/admin/settings/add-location', async (req, res) => {
-  const { name } = req.body;
-  await pool.query('INSERT INTO locations (name) VALUES ($1)', [name]);
-  res.redirect('/admin/settings');
-});
-
-// Render settings page
-app.get('/admin/settings', requireAdmin, async (req, res) => {
-  const adminId = req.session.admin_id;
-  const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
-  const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
-
-  const queryLocationId = req.query.location_id;
-  const selectedLocationId = queryLocationId || adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
-
-  const ratesRes = await pool.query(
-    'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
-    [selectedLocationId]
-  );
-
-  res.render('settings', {
-    title: 'Settings',
-    admin: adminRes.rows[0],
-    locations: locationsRes.rows,
-    selectedLocationId,
-    rates: ratesRes.rows
-  });
-});
-
-// Save rates
-app.post('/admin/settings/save-rates', async (req, res) => {
-  const { location_id, ...ratesInput } = req.body;
-
-  const groupSizes = [
-    { min: 1, max: 3 },
-    { min: 4, max: 5 },
-    { min: 6, max: 8 },
-    { min: 9, max: 10 },
-    { min: 11, max: 15 },
-    { min: 16, max: 20 }
-  ];
-
+app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
-    for (const group of groupSizes) {
-      const dayKey = `day_${group.min}_${group.max}`;
-      const nightKey = `night_${group.min}_${group.max}`;
-      const rangeLabel = `${group.min}–${group.max} people`;
+    const totalParticipantsRes = await pool.query('SELECT COUNT(*) FROM participants');
+    const sessionGenderRes = await pool.query(`
+  SELECT 
+    ps.session_id,
+    s.start_time,
+    COUNT(*) FILTER (WHERE p.gender = 'Male') AS male_count,
+    COUNT(*) FILTER (WHERE p.gender = 'Female') AS female_count
+  FROM participant_sessions ps
+  JOIN participants p ON ps.participant_id = p.participant_id
+  JOIN sessions s ON ps.session_id = s.session_id
+  GROUP BY ps.session_id, s.start_time
+  ORDER BY s.start_time ASC
+`);
 
-      const dayRate = parseFloat(ratesInput[dayKey]);
-      const nightRate = parseFloat(ratesInput[nightKey]);
+    const maleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Male'");
+    const femaleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Female'");
 
-      const existsRes = await pool.query(
-        'SELECT id FROM rate_settings WHERE location_id = $1 AND group_min = $2 AND group_max = $3',
-        [location_id, group.min, group.max]
-      );
+    const totalSpentRes = await pool.query('SELECT SUM(adjusted_cost) FROM participant_sessions');
+    const avgCostRes = await pool.query('SELECT AVG(adjusted_cost) FROM participant_sessions');
 
-      if (existsRes.rows.length > 0) {
-        await pool.query(
-          'UPDATE rate_settings SET day_rate = $1, night_rate = $2, range_label = $3 WHERE id = $4',
-          [dayRate, nightRate, rangeLabel, existsRes.rows[0].id]
-        );
-      } else {
-        await pool.query(
-          'INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate, range_label) VALUES ($1, $2, $3, $4, $5, $6)',
-          [location_id, group.min, group.max, dayRate, nightRate, rangeLabel]
-        );
-      }
-    }
+    const topParticipantsRes = await pool.query(`
+      SELECT p.name, COUNT(ps.session_id) AS count
+      FROM participants p
+      JOIN participant_sessions ps ON p.participant_id = ps.participant_id
+      GROUP BY p.name
+      ORDER BY count DESC
+      LIMIT 10
+    `);
 
-    res.redirect(`/admin/settings?location_id=${location_id}`);
+    const dailyMultiMonthTrendRes = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM-DD') AS day,
+             DATE_TRUNC('month', s.start_time) AS month,
+             SUM(ps.adjusted_cost) AS total
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      GROUP BY day, month
+      ORDER BY day
+
+
+    `);
+
+    const dailyGrouped = {};
+    dailyMultiMonthTrendRes.rows.forEach(r => {
+      const key = r.month.toISOString().slice(0, 7); // e.g., "2025-03"
+      if (!dailyGrouped[key]) dailyGrouped[key] = [];
+      dailyGrouped[key].push({ day: r.day, total: parseFloat(r.total) });
+    });
+
+    const sessionDatesRes = await pool.query(`
+      SELECT DISTINCT DATE(start_time) AS session_date
+      FROM sessions
+      ORDER BY session_date;
+    `);
+
+    const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
+
+
+
+    res.render('dashboard', {
+      admin: req.session.admin,
+      totalParticipants: totalParticipantsRes.rows[0].count,
+      maleCount: maleCountRes.rows[0].count,
+      femaleCount: femaleCountRes.rows[0].count,
+      totalSpent: parseFloat(totalSpentRes.rows[0].sum || 0).toFixed(2),
+      avgCost: parseFloat(avgCostRes.rows[0].avg || 0).toFixed(2),
+      topParticipants: topParticipantsRes.rows,
+      sessionGenderData: sessionGenderRes.rows,
+      sessionDates,
+      dailyChartByMonth: dailyGrouped
+
+    });
   } catch (err) {
-    console.error("Error saving rates:", err);
-    res.status(500).send("Failed to save rates.");
+    console.error(err);
+    res.send("Error loading dashboard");
   }
 });
+
+app.get('/admin/analytics', requireAdmin, (req, res) => {
+  res.render('analytics', { admin: req.session.admin, title: 'Analytics' });
+});
+
+app.get('/admin/reports', requireAdmin, (req, res) => {
+  res.render('reports', { admin: req.session.admin, title: 'Reports' });
+});
+
+app.get('/admin/settings', requireAdmin, (req, res) => {
+  res.render('settings', { admin: req.session.admin, title: 'Settings' });
+});
+
+
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
