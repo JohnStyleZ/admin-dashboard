@@ -175,6 +175,20 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       JOIN first_sessions fs ON fs.participant_id = ps.participant_id
       GROUP BY month, type
       ORDER BY month, type`);
+    const sessionsPerMonth = await pool.query(`
+      SELECT TO_CHAR(start_time, 'YYYY-MM') AS month, COUNT(*) AS total_sessions
+      FROM sessions
+      GROUP BY month
+      ORDER BY month;
+    `);
+    
+    const spendingPerMonth = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month, SUM(ps.adjusted_cost) AS total_spent
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      GROUP BY month
+      ORDER BY month;
+    `);
 
     res.render('analytics', {
       admin: req.session.admin,
@@ -183,6 +197,8 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       durationBuckets: durationBuckets.rows,
       groupSizes: groupSizes.rows,
       genderTrends: genderTrends.rows,
+      sessionsPerMonth: sessionsPerMonth.rows,
+      spendingPerMonth: spendingPerMonth.rows,
       newVsReturning: newVsReturning.rows
     });
   } catch (err) {
