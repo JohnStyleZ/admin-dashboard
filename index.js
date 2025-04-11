@@ -136,8 +136,93 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/admin/analytics', requireAdmin, (req, res) => {
-  res.render('analytics', { admin: req.session.admin, title: 'Analytics' });
+app.get('/admin/analytics', requireAdmin, async (req, res) => {
+  try {
+    const peakHours = await pool.query(`
+      SELECT EXTRACT(HOUR FROM join_time) AS hour, COUNT(*) AS total
+      FROM participant_sessions
+      JOIN sessions ON participant_sessions.session_id = sessions.session_id
+      GROUP BY hour
+      ORDER BY hour`);
+
+    const durationBuckets = await pool.query(`
+      SELECT width_bucket(EXTRACT(EPOCH FROM (leave_time - join_time))/60, 0, 300, 6) AS bucket,
+             COUNT(*) AS total
+      FROM participant_sessions
+      GROUP BY bucket
+      ORDER BY bucket`);
+
+    const groupSizes = await pool.query(`
+      SELECT CASE
+               WHEN count <= 5 THEN 'Small (1–5)'
+               WHEN count <= 10 THEN 'Medium (6–10)'
+               ELSE 'Large (11+)'
+             END AS size_category,
+             COUNT(*) AS total_sessions
+      FROM (
+        SELECT session_id, COUNT(*) AS count
+        FROM participant_sessions
+        GROUP BY session_id
+      ) grouped
+      GROUP BY size_category`);
+
+    const genderTrends = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month,
+             p.gender,
+             COUNT(*) AS total
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      JOIN participants p ON ps.participant_id = p.participant_id
+      GROUP BY month, p.gender
+      ORDER BY month, p.gender`);
+
+    const newVsReturning = await pool.query(`
+      WITH first_sessions AS (
+        SELECT participant_id, MIN(session_id) AS first_session
+        FROM participant_sessions
+        GROUP BY participant_id
+      )
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month,
+             CASE
+               WHEN ps.session_id = fs.first_session THEN 'New'
+               ELSE 'Returning'
+             END AS type,
+             COUNT(*) AS total
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      JOIN first_sessions fs ON fs.participant_id = ps.participant_id
+      GROUP BY month, type
+      ORDER BY month, type`);
+    const sessionsPerMonth = await pool.query(`
+      SELECT TO_CHAR(start_time, 'YYYY-MM') AS month, COUNT(*) AS total_sessions
+      FROM sessions
+      GROUP BY month
+      ORDER BY month;
+    `);
+
+    const spendingPerMonth = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month, SUM(ps.adjusted_cost) AS total_spent
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      GROUP BY month
+      ORDER BY month;
+    `);
+
+    res.render('analytics', {
+      admin: req.session.admin,
+      title: 'Analytics',
+      peakHours: peakHours.rows,
+      durationBuckets: durationBuckets.rows,
+      groupSizes: groupSizes.rows,
+      genderTrends: genderTrends.rows,
+      sessionsPerMonth: sessionsPerMonth.rows,
+      spendingPerMonth: spendingPerMonth.rows,
+      newVsReturning: newVsReturning.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.send("Error loading analytics");
+  }
 });
 
 app.get('/admin/reports', requireAdmin, (req, res) => {
