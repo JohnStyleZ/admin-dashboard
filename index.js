@@ -4,16 +4,17 @@ const session = require('express-session');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const path = require('path');
-const flash = require('connect-flash');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
+// Middlewares
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
@@ -22,19 +23,14 @@ app.use(session({
   resave: false,
   saveUninitialized: false
 }));
-app.use(flash());
 
-app.use((req, res, next) => {
-  res.locals.success_msg = req.flash('success_msg');
-  res.locals.error_msg = req.flash('error_msg');
-  next();
-});
-
+// Middleware for route protection
 function requireAdmin(req, res, next) {
   if (req.session && req.session.admin) next();
   else res.redirect('/admin/login');
 }
 
+// --- Admin Login ---
 app.get('/admin/login', (req, res) => {
   res.render('login', { error: null });
 });
@@ -59,39 +55,45 @@ app.post('/admin/login', async (req, res) => {
   }
 });
 
+// --- Dashboard ---
 app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   try {
     const totalParticipantsRes = await pool.query('SELECT COUNT(*) FROM participants');
-    const sessionGenderRes = await pool.query(`
-      SELECT ps.session_id, s.start_time,
-        COUNT(*) FILTER (WHERE p.gender = 'Male') AS male_count,
-        COUNT(*) FILTER (WHERE p.gender = 'Female') AS female_count
-      FROM participant_sessions ps
-      JOIN participants p ON ps.participant_id = p.participant_id
-      JOIN sessions s ON ps.session_id = s.session_id
-      GROUP BY ps.session_id, s.start_time
-      ORDER BY s.start_time ASC`);
-
     const maleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Male'");
     const femaleCountRes = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Female'");
+
     const totalSpentRes = await pool.query('SELECT SUM(adjusted_cost) FROM participant_sessions');
     const avgCostRes = await pool.query('SELECT AVG(adjusted_cost) FROM participant_sessions');
+
     const topParticipantsRes = await pool.query(`
       SELECT p.name, COUNT(ps.session_id) AS count
       FROM participants p
       JOIN participant_sessions ps ON p.participant_id = ps.participant_id
       GROUP BY p.name
       ORDER BY count DESC
-      LIMIT 10`);
+      LIMIT 10
+    `);
+
+    const sessionGenderRes = await pool.query(`
+      SELECT ps.session_id, s.start_time,
+             COUNT(*) FILTER (WHERE p.gender = 'Male') AS male_count,
+             COUNT(*) FILTER (WHERE p.gender = 'Female') AS female_count
+      FROM participant_sessions ps
+      JOIN participants p ON ps.participant_id = p.participant_id
+      JOIN sessions s ON ps.session_id = s.session_id
+      GROUP BY ps.session_id, s.start_time
+      ORDER BY s.start_time ASC
+    `);
 
     const dailyMultiMonthTrendRes = await pool.query(`
       SELECT TO_CHAR(s.start_time, 'YYYY-MM-DD') AS day,
-        DATE_TRUNC('month', s.start_time) AS month,
-        SUM(ps.adjusted_cost) AS total
+             DATE_TRUNC('month', s.start_time) AS month,
+             SUM(ps.adjusted_cost) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
       GROUP BY day, month
-      ORDER BY day`);
+      ORDER BY day
+    `);
 
     const dailyGrouped = {};
     dailyMultiMonthTrendRes.rows.forEach(r => {
@@ -102,7 +104,9 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
 
     const sessionDatesRes = await pool.query(`
       SELECT DISTINCT DATE(start_time) AS session_date
-      FROM sessions ORDER BY session_date`);
+      FROM sessions
+      ORDER BY session_date;
+    `);
     const sessionDates = sessionDatesRes.rows.map(r => r.session_date.toISOString().split('T')[0]);
 
     res.render('dashboard', {
@@ -123,21 +127,34 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
   }
 });
 
+// --- Analytics ---
 app.get('/admin/analytics', requireAdmin, async (req, res) => {
   try {
-    const peakHours = await pool.query(`SELECT EXTRACT(HOUR FROM join_time) AS hour, COUNT(*) AS total FROM participant_sessions JOIN sessions ON participant_sessions.session_id = sessions.session_id GROUP BY hour ORDER BY hour`);
-    const durationBuckets = await pool.query(`SELECT width_bucket(EXTRACT(EPOCH FROM (leave_time - join_time))/60, 0, 300, 6) AS bucket, COUNT(*) AS total FROM participant_sessions GROUP BY bucket ORDER BY bucket`);
+    const peakHours = await pool.query(`
+      SELECT EXTRACT(HOUR FROM join_time) AS hour, COUNT(*) AS total
+      FROM participant_sessions
+      JOIN sessions ON participant_sessions.session_id = sessions.session_id
+      GROUP BY hour ORDER BY hour`);
+
+    const durationBuckets = await pool.query(`
+      SELECT width_bucket(EXTRACT(EPOCH FROM (leave_time - join_time))/60, 0, 300, 6) AS bucket,
+             COUNT(*) AS total
+      FROM participant_sessions
+      GROUP BY bucket ORDER BY bucket`);
+
     const groupSizes = await pool.query(`
       SELECT CASE
-        WHEN count <= 5 THEN 'Small (1–5)'
-        WHEN count <= 10 THEN 'Medium (6–10)'
-        ELSE 'Large (11+)' END AS size_category,
-        COUNT(*) AS total_sessions
+               WHEN count <= 5 THEN 'Small (1–5)'
+               WHEN count <= 10 THEN 'Medium (6–10)'
+               ELSE 'Large (11+)'
+             END AS size_category,
+             COUNT(*) AS total_sessions
       FROM (SELECT session_id, COUNT(*) AS count FROM participant_sessions GROUP BY session_id) grouped
       GROUP BY size_category`);
 
     const genderTrends = await pool.query(`
-      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month, p.gender, COUNT(*) AS total
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month,
+             p.gender, COUNT(*) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
       JOIN participants p ON ps.participant_id = p.participant_id
@@ -145,18 +162,25 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
 
     const newVsReturning = await pool.query(`
       WITH first_sessions AS (
-        SELECT participant_id, MIN(session_id) AS first_session FROM participant_sessions GROUP BY participant_id
-      )
+        SELECT participant_id, MIN(session_id) AS first_session
+        FROM participant_sessions GROUP BY participant_id)
       SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month,
-        CASE WHEN ps.session_id = fs.first_session THEN 'New' ELSE 'Returning' END AS type,
-        COUNT(*) AS total
+             CASE WHEN ps.session_id = fs.first_session THEN 'New' ELSE 'Returning' END AS type,
+             COUNT(*) AS total
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
       JOIN first_sessions fs ON fs.participant_id = ps.participant_id
       GROUP BY month, type ORDER BY month, type`);
 
-    const sessionsPerMonth = await pool.query(`SELECT TO_CHAR(start_time, 'YYYY-MM') AS month, COUNT(*) AS total_sessions FROM sessions GROUP BY month ORDER BY month`);
-    const spendingPerMonth = await pool.query(`SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month, SUM(ps.adjusted_cost) AS total_spent FROM participant_sessions ps JOIN sessions s ON ps.session_id = s.session_id GROUP BY month ORDER BY month`);
+    const sessionsPerMonth = await pool.query(`
+      SELECT TO_CHAR(start_time, 'YYYY-MM') AS month, COUNT(*) AS total_sessions
+      FROM sessions GROUP BY month ORDER BY month`);
+
+    const spendingPerMonth = await pool.query(`
+      SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month, SUM(ps.adjusted_cost) AS total_spent
+      FROM participant_sessions ps
+      JOIN sessions s ON ps.session_id = s.session_id
+      GROUP BY month ORDER BY month`);
 
     res.render('analytics', {
       admin: req.session.admin,
@@ -175,37 +199,47 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
   }
 });
 
+// --- Reports ---
 app.get('/admin/reports', requireAdmin, (req, res) => {
   res.render('reports', { admin: req.session.admin, title: 'Reports' });
 });
 
+// --- Settings ---
 app.get('/admin/settings', requireAdmin, async (req, res) => {
   const adminId = req.session.admin.admin_id;
   const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
   const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
-
   const queryLocationId = req.query.location_id;
   const selectedLocationId = queryLocationId || adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
 
-  const ratesRes = await pool.query('SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min', [selectedLocationId]);
+  const ratesRes = await pool.query(
+    'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
+    [selectedLocationId]
+  );
+
+  const message = req.session.message;
+  delete req.session.message;
 
   res.render('settings', {
     title: 'Settings',
     admin: adminRes.rows[0],
     locations: locationsRes.rows,
     selectedLocationId,
-    rates: ratesRes.rows
+    rates: ratesRes.rows,
+    message
   });
 });
 
+// --- Profile Update ---
 app.post('/admin/settings/update-profile', async (req, res) => {
   const { email } = req.body;
   const adminId = req.session.admin_id;
   await pool.query('UPDATE admins SET email = $1 WHERE admin_id = $2', [email, adminId]);
-  req.flash('success_msg', 'Email updated.');
+  req.session.message = 'Email updated successfully!';
   res.redirect('/admin/settings');
 });
 
+// --- Password Update ---
 app.post('/admin/settings/update-password', async (req, res) => {
   const { current_password, new_password } = req.body;
   const adminId = req.session.admin_id;
@@ -215,27 +249,31 @@ app.post('/admin/settings/update-password', async (req, res) => {
   if (result.rows[0].password_hash === hashCurrent) {
     const hashNew = crypto.createHash('sha256').update(new_password).digest('hex');
     await pool.query('UPDATE admins SET password_hash = $1 WHERE admin_id = $2', [hashNew, adminId]);
-    req.flash('success_msg', 'Password updated.');
+    req.session.message = 'Password changed successfully!';
   } else {
-    req.flash('error_msg', 'Current password incorrect.');
+    req.session.message = 'Current password is incorrect!';
   }
   res.redirect('/admin/settings');
 });
 
+// --- Add Location ---
 app.post('/admin/settings/add-location', async (req, res) => {
   const { name } = req.body;
   await pool.query('INSERT INTO locations (name) VALUES ($1)', [name]);
-  req.flash('success_msg', 'Location added.');
+  req.session.message = 'Location added successfully!';
   res.redirect('/admin/settings');
 });
 
+// --- Save Rates ---
 app.post('/admin/settings/save-rates', async (req, res) => {
   const { location_id, ...ratesInput } = req.body;
-
   const groupSizes = [
-    { min: 1, max: 3 }, { min: 4, max: 5 },
-    { min: 6, max: 8 }, { min: 9, max: 10 },
-    { min: 11, max: 15 }, { min: 16, max: 20 }
+    { min: 1, max: 3 },
+    { min: 4, max: 5 },
+    { min: 6, max: 8 },
+    { min: 9, max: 10 },
+    { min: 11, max: 15 },
+    { min: 16, max: 20 }
   ];
 
   try {
@@ -247,23 +285,32 @@ app.post('/admin/settings/save-rates', async (req, res) => {
       const dayRate = parseFloat(ratesInput[dayKey]);
       const nightRate = parseFloat(ratesInput[nightKey]);
 
-      const existsRes = await pool.query('SELECT id FROM rate_settings WHERE location_id = $1 AND group_min = $2 AND group_max = $3', [location_id, group.min, group.max]);
+      const existsRes = await pool.query(
+        'SELECT id FROM rate_settings WHERE location_id = $1 AND group_min = $2 AND group_max = $3',
+        [location_id, group.min, group.max]
+      );
 
       if (existsRes.rows.length > 0) {
-        await pool.query('UPDATE rate_settings SET day_rate = $1, night_rate = $2, range_label = $3 WHERE id = $4', [dayRate, nightRate, rangeLabel, existsRes.rows[0].id]);
+        await pool.query(
+          'UPDATE rate_settings SET day_rate = $1, night_rate = $2, range_label = $3 WHERE id = $4',
+          [dayRate, nightRate, rangeLabel, existsRes.rows[0].id]
+        );
       } else {
-        await pool.query('INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate, range_label) VALUES ($1, $2, $3, $4, $5, $6)', [location_id, group.min, group.max, dayRate, nightRate, rangeLabel]);
+        await pool.query(
+          'INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate, range_label) VALUES ($1, $2, $3, $4, $5, $6)',
+          [location_id, group.min, group.max, dayRate, nightRate, rangeLabel]
+        );
       }
     }
-    req.flash('success_msg', 'Rates saved successfully.');
+    req.session.message = 'Rates updated successfully!';
     res.redirect(`/admin/settings?location_id=${location_id}`);
   } catch (err) {
     console.error("Error saving rates:", err);
-    req.flash('error_msg', 'Failed to save rates.');
-    res.redirect(`/admin/settings?location_id=${location_id}`);
+    res.status(500).send("Failed to save rates.");
   }
 });
 
+// --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
     if (err) console.error(err);
@@ -275,6 +322,7 @@ app.get('/', (req, res) => {
   res.redirect('/admin/login');
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
