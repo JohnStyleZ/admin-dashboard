@@ -337,6 +337,69 @@ app.post('/admin/settings/update-participants', requireAdmin, async (req, res) =
   }
 });
 
+// --- API: Create Session ---
+app.post('/api/sessions', async (req, res) => {
+  const { start_time } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO sessions (start_time) VALUES ($1) RETURNING session_id',
+      [start_time]
+    );
+    res.json({ session_id: result.rows[0].session_id });
+  } catch (err) {
+    console.error("Error creating session:", err);
+    res.status(500).json({ error: 'Failed to create session' });
+  }
+});
+
+// --- API: End Session ---
+app.post('/api/sessions/:id/end', async (req, res) => {
+  const sessionId = req.params.id;
+  const { end_time } = req.body;
+  try {
+    await pool.query('UPDATE sessions SET end_time = $1 WHERE session_id = $2', [end_time, sessionId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error ending session:", err);
+    res.status(500).json({ error: 'Failed to end session' });
+  }
+});
+
+// --- API: Create or Get Participant by Name ---
+app.post('/api/participants/check-in', async (req, res) => {
+  const { name, gender } = req.body;
+  try {
+    const check = await pool.query('SELECT participant_id FROM participants WHERE name = $1', [name]);
+    if (check.rows.length > 0) {
+      res.json({ participant_id: check.rows[0].participant_id });
+    } else {
+      const insert = await pool.query(
+        'INSERT INTO participants (name, gender) VALUES ($1, $2) RETURNING participant_id',
+        [name, gender || null]
+      );
+      res.json({ participant_id: insert.rows[0].participant_id });
+    }
+  } catch (err) {
+    console.error("Error checking in participant:", err);
+    res.status(500).json({ error: 'Failed to check in participant' });
+  }
+});
+
+// --- API: Log participant session ---
+app.post('/api/participant-sessions', async (req, res) => {
+  const { participant_id, session_id, join_time, leave_time } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO participant_sessions (participant_id, session_id, join_time, leave_time)
+       VALUES ($1, $2, $3, $4)`,
+      [participant_id, session_id, join_time, leave_time]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error logging participant session:", err);
+    res.status(500).json({ error: 'Failed to log participant session' });
+  }
+});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
