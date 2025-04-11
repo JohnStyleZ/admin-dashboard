@@ -123,6 +123,43 @@
         </form>
       </div>
     </div>
+    <!-- Participants Management -->
+    <div class="col-md-12">
+      <div class="card p-3 shadow-sm">
+        <h5 class="mb-3">👥 Manage Participants</h5>
+        <form action="/admin/settings/update-participants" method="POST">
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Gender</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% participants.forEach(p => { %>
+                  <tr>
+                    <td><%= p.participant_id %></td>
+                    <td>
+                      <input type="text" class="form-control form-control-sm" name="name_<%= p.participant_id %>" value="<%= p.name %>">
+                    </td>
+                    <td>
+                      <select name="gender_<%= p.participant_id %>" class="form-select form-select-sm">
+                        <option value="Male" <%= p.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                        <option value="Female" <%= p.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                        <option value="" <%= !p.gender ? 'selected' : '' %>>—</option>
+                      </select>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <button type="submit" class="btn btn-primary mt-2">Save Changes</button>
+        </form>
+      </div>
+    </div>
 
   </div>
 </div>
