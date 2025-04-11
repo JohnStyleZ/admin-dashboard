@@ -276,7 +276,6 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
 });
 
 
-// Add the missing route to handle saving rates
 app.post('/admin/settings/save-rates', async (req, res) => {
   const { location_id, ...ratesInput } = req.body;
 
@@ -293,32 +292,39 @@ app.post('/admin/settings/save-rates', async (req, res) => {
     for (const group of groupSizes) {
       const dayKey = `day_${group.min}_${group.max}`;
       const nightKey = `night_${group.min}_${group.max}`;
+      const rangeLabel = `${group.min}–${group.max} people`;
 
       const dayRate = parseFloat(ratesInput[dayKey]);
       const nightRate = parseFloat(ratesInput[nightKey]);
 
       const existsRes = await pool.query(
-        'SELECT id FROM rate_settings WHERE location_id = $1 AND group_min = $2 AND group_max = $3',
+        `SELECT id FROM rate_settings 
+         WHERE location_id = $1 AND group_min = $2 AND group_max = $3`,
         [location_id, group.min, group.max]
       );
 
       if (existsRes.rows.length > 0) {
+        // Update
         await pool.query(
-          'UPDATE rate_settings SET day_rate = $1, night_rate = $2 WHERE id = $3',
-          [dayRate, nightRate, existsRes.rows[0].id]
+          `UPDATE rate_settings 
+           SET day_rate = $1, night_rate = $2, range_label = $3
+           WHERE id = $4`,
+          [dayRate, nightRate, rangeLabel, existsRes.rows[0].id]
         );
       } else {
+        // Insert
         await pool.query(
-          'INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate) VALUES ($1, $2, $3, $4, $5)',
-          [location_id, group.min, group.max, dayRate, nightRate]
+          `INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate, range_label)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [location_id, group.min, group.max, dayRate, nightRate, rangeLabel]
         );
       }
     }
 
     res.redirect(`/admin/settings?location_id=${location_id}`);
   } catch (err) {
-    console.error('Error saving rates:', err);
-    res.status(500).send("Failed to save rates");
+    console.error("Error saving rates:", err);
+    res.status(500).send("Failed to save rates.");
   }
 });
 
