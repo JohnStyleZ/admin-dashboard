@@ -144,9 +144,32 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
   res.render('reports', { admin: req.session.admin, title: 'Reports' });
 });
 
-app.get('/admin/settings', requireAdmin, (req, res) => {
-  res.render('settings', { admin: req.session.admin, title: 'Settings' });
+app.get('/admin/settings', requireAdmin, async (req, res) => {
+  const adminId = req.session.admin.admin_id;
+
+  const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
+  const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
+
+  const queryLocationId = req.query.location_id;
+  const selectedLocationId =
+    queryLocationId ||
+    adminRes.rows[0].location_id ||
+    locationsRes.rows[0]?.location_id;
+
+  const ratesRes = await pool.query(
+    'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
+    [selectedLocationId]
+  );
+
+  res.render('settings', {
+    title: 'Settings',
+    admin: adminRes.rows[0],
+    locations: locationsRes.rows, // ✅ this is the missing variable
+    selectedLocationId,
+    rates: ratesRes.rows
+  });
 });
+
 
 
 
