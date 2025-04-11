@@ -276,26 +276,49 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
 });
 
 
-// Route to update rates
-app.post('/admin/settings/update-rates', async (req, res) => {
-  try {
-    const { location_id } = req.body;
-    const updates = Object.entries(req.body)
-      .filter(([key]) => key.startsWith('rateId_'))
-      .map(([key, id]) => {
-        const dayRate = req.body[`dayRate_${id}`];
-        const nightRate = req.body[`nightRate_${id}`];
-        return pool.query(
-          'UPDATE rate_settings SET day_rate = $1, night_rate = $2 WHERE id = $3 AND location_id = $4',
-          [dayRate, nightRate, id, location_id]
-        );
-      });
+// Add the missing route to handle saving rates
+app.post('/admin/settings/save-rates', async (req, res) => {
+  const { location_id, ...ratesInput } = req.body;
 
-    await Promise.all(updates);
+  const groupSizes = [
+    { min: 1, max: 3 },
+    { min: 4, max: 5 },
+    { min: 6, max: 8 },
+    { min: 9, max: 10 },
+    { min: 11, max: 15 },
+    { min: 16, max: 20 }
+  ];
+
+  try {
+    for (const group of groupSizes) {
+      const dayKey = `day_${group.min}_${group.max}`;
+      const nightKey = `night_${group.min}_${group.max}`;
+
+      const dayRate = parseFloat(ratesInput[dayKey]);
+      const nightRate = parseFloat(ratesInput[nightKey]);
+
+      const existsRes = await pool.query(
+        'SELECT id FROM rate_settings WHERE location_id = $1 AND group_min = $2 AND group_max = $3',
+        [location_id, group.min, group.max]
+      );
+
+      if (existsRes.rows.length > 0) {
+        await pool.query(
+          'UPDATE rate_settings SET day_rate = $1, night_rate = $2 WHERE id = $3',
+          [dayRate, nightRate, existsRes.rows[0].id]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate) VALUES ($1, $2, $3, $4, $5)',
+          [location_id, group.min, group.max, dayRate, nightRate]
+        );
+      }
+    }
+
     res.redirect(`/admin/settings?location_id=${location_id}`);
   } catch (err) {
-    console.error(err);
-    res.send("Error updating rates");
+    console.error('Error saving rates:', err);
+    res.status(500).send("Failed to save rates");
   }
 });
 
