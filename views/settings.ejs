@@ -58,7 +58,9 @@
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
         <h5 class="mb-2">📉 Rate Settings</h5>
-        <form action="/admin/settings/save-rates" method="POST">
+    
+        <!-- Location selection uses GET -->
+        <form method="GET" action="/admin/settings">
           <label class="form-label">Select Location</label>
           <select name="location_id" class="form-select mb-3" onchange="this.form.submit()">
             <% locations.forEach(loc => { %>
@@ -67,13 +69,18 @@
               </option>
             <% }) %>
           </select>
-
+        </form>
+    
+        <!-- Separate form for saving rates -->
+        <form action="/admin/settings/save-rates" method="POST">
+          <input type="hidden" name="location_id" value="<%= selectedLocationId %>">
+    
           <div class="row fw-bold mb-2">
             <div class="col-4">Group Size</div>
             <div class="col-4">2PM–7PM Rate ($/hr)</div>
             <div class="col-4">After 7PM Rate ($/hr)</div>
           </div>
-
+    
           <% const groupSizes = [
             { min: 1, max: 3 },
             { min: 4, max: 5 },
@@ -82,7 +89,7 @@
             { min: 11, max: 15 },
             { min: 16, max: 20 }
           ]; %>
-
+    
           <% groupSizes.forEach(group => {
             const rate = rates.find(r => r.group_min === group.min && r.group_max === group.max) || {};
           %>
@@ -98,11 +105,11 @@
               </div>
             </div>
           <% }) %>
-
+    
           <button type="submit" class="btn btn-success mt-3">Save Rates</button>
         </form>
       </div>
-
+    
       <!-- Add Location -->
       <div class="card p-3 shadow-sm mt-3">
         <h5>📍 Add Location</h5>
@@ -112,6 +119,7 @@
         </form>
       </div>
     </div>
+
   </div>
 </div>
 
