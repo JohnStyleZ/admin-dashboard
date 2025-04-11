@@ -7,7 +7,6 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const crypto = require('crypto');
 
 // Update email
 app.post('/admin/settings/update-profile', async (req, res) => {
