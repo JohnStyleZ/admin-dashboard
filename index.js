@@ -258,9 +258,13 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
   const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
   const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
 
-  const selectedLocationId = adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
+  // ⬇ Get from query if provided, fallback to admin or first location
+  const queryLocationId = req.query.location_id;
+  const selectedLocationId =
+    queryLocationId ||
+    adminRes.rows[0].location_id ||
+    locationsRes.rows[0]?.location_id;
 
-  // ✅ Fetch rates for the selected location
   const ratesRes = await pool.query(
     'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
     [selectedLocationId]
@@ -271,7 +275,7 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
     admin: adminRes.rows[0],
     locations: locationsRes.rows,
     selectedLocationId,
-    rates: ratesRes.rows // ✅ pass this to the template
+    rates: ratesRes.rows
   });
 });
 
