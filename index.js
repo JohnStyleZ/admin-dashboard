@@ -145,7 +145,7 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
 });
 
 app.get('/admin/settings', requireAdmin, (req, res) => {
-  res.send("settings");
+  res.render("settings");
 });
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
