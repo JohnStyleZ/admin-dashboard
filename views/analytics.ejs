@@ -26,44 +26,108 @@
   <a href="/admin/logout">Logout</a>
 </div>
 
-<div class="main">
+<div class="main p-4">
   <h2 class="mb-4">📊 Analytics</h2>
   <div class="row g-4">
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>Total Sessions Per Month</h5>
-        <canvas id="sessionsPerMonth"></canvas>
+        <h5>⏰ Peak Participation Hour</h5>
+        <canvas id="peakHourChart"></canvas>
       </div>
     </div>
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>Average Group Size</h5>
-        <canvas id="avgGroupSize"></canvas>
+        <h5>⏱️ Duration Distribution</h5>
+        <canvas id="durationChart"></canvas>
       </div>
     </div>
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>Gender Ratio</h5>
-        <canvas id="genderRatioChart"></canvas>
+        <h5>👥 Group Size Categories</h5>
+        <canvas id="groupSizeChart"></canvas>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3 shadow-sm">
+        <h5>👩‍🦰 Gender Participation Over Time</h5>
+        <canvas id="genderTrendChart"></canvas>
+      </div>
+    </div>
+    <div class="col-md-12">
+      <div class="card p-3 shadow-sm">
+        <h5>👤 New vs Returning Participants</h5>
+        <canvas id="returnChart"></canvas>
       </div>
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  new Chart(document.getElementById('sessionsPerMonth'), {
+  const peakData = <%- JSON.stringify(peakHours) %>;
+  const durationData = <%- JSON.stringify(durationBuckets) %>;
+  const groupSizeData = <%- JSON.stringify(groupSizes) %>;
+  const genderTrends = <%- JSON.stringify(genderTrends) %>;
+  const returnData = <%- JSON.stringify(newVsReturning) %>;
+
+  new Chart(document.getElementById('peakHourChart'), {
     type: 'bar',
-    data: { labels: ['Jan', 'Feb', 'Mar', 'Apr'], datasets: [{ label: 'Sessions', data: [5, 7, 4, 6], backgroundColor: '#0d6efd' }] }
+    data: {
+      labels: peakData.map(r => `${r.hour}:00`),
+      datasets: [{ label: 'Participants', data: peakData.map(r => r.total), backgroundColor: '#0d6efd' }]
+    }
   });
 
-  new Chart(document.getElementById('avgGroupSize'), {
+  new Chart(document.getElementById('durationChart'), {
+    type: 'bar',
+    data: {
+      labels: durationData.map(r => `Bucket ${r.bucket}`),
+      datasets: [{ label: 'People', data: durationData.map(r => r.total), backgroundColor: '#6f42c1' }]
+    }
+  });
+
+  new Chart(document.getElementById('groupSizeChart'), {
+    type: 'pie',
+    data: {
+      labels: groupSizeData.map(r => r.size_category),
+      datasets: [{ data: groupSizeData.map(r => r.total_sessions), backgroundColor: ['#0d6efd', '#ffc107', '#dc3545'] }]
+    }
+  });
+
+  const months = [...new Set(genderTrends.map(r => r.month))];
+  const genders = ['Male', 'Female'];
+  const trendData = genders.map(g => ({
+    label: g,
+    data: months.map(m => {
+      const row = genderTrends.find(r => r.month === m && r.gender === g);
+      return row ? row.total : 0;
+    }),
+    borderColor: g === 'Male' ? '#0d6efd' : '#e83e8c',
+    fill: false
+  }));
+
+  new Chart(document.getElementById('genderTrendChart'), {
     type: 'line',
-    data: { labels: ['Jan', 'Feb', 'Mar', 'Apr'], datasets: [{ label: 'Avg Group Size', data: [6.5, 7.2, 5.9, 6.8], borderColor: '#198754', fill: false }] }
+    data: { labels: months, datasets: trendData }
   });
 
-  new Chart(document.getElementById('genderRatioChart'), {
-    type: 'doughnut',
-    data: { labels: ['Male', 'Female'], datasets: [{ data: [20, 10], backgroundColor: ['#0d6efd', '#e83e8c'] }] }
+  const returnMonths = [...new Set(returnData.map(r => r.month))];
+  const types = ['New', 'Returning'];
+  const returnDatasets = types.map(t => ({
+    label: t,
+    data: returnMonths.map(m => {
+      const row = returnData.find(r => r.month === m && r.type === t);
+      return row ? r.total : 0;
+    }),
+    backgroundColor: t === 'New' ? '#198754' : '#6c757d'
+  }));
+
+  new Chart(document.getElementById('returnChart'), {
+    type: 'bar',
+    data: { labels: returnMonths, datasets: returnDatasets },
+    options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }
   });
 </script>
+
 </body>
 </html>
