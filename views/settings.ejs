@@ -1,23 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Settings</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    label, input { display: block; margin: 10px 0; }
-    button { padding: 8px 12px; }
-  </style>
-</head>
+<html>
+<head><title>Settings</title></head>
 <body>
-  <h1>Settings</h1>
-  <form method="POST" action="/admin/settings">
-    <% settings.forEach(s => { %>
-      <label><%= s.key %>:</label>
-      <input type="text" name="<%= s.key %>" value="<%= s.value %>">
-    <% }); %>
-    <button type="submit">Save Settings</button>
-  </form>
-  <p><a href="/admin/dashboard">Back to Dashboard</a></p>
+  <h1>⚙️ Settings Page</h1>
+  <p>Coming soon: system preferences and user management.</p>
 </body>
 </html>
