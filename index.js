@@ -62,9 +62,10 @@ app.use(session({
 }));
 
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.admin) next();
+  if (req.session && req.session.admin_id) next();
   else res.redirect('/admin/login');
 }
+
 
 app.get('/admin/login', (req, res) => {
   res.render('login', { error: null });
@@ -79,6 +80,7 @@ app.post('/admin/login', async (req, res) => {
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
       if (passwordHash === admin.password_hash) {
         req.session.admin = admin;
+        req.session.admin_id = admin.admin_id;
         return res.redirect('/admin/dashboard');
       }
     }
