@@ -340,6 +340,7 @@ app.post('/admin/settings/update-participants', requireAdmin, async (req, res) =
   }
 });
 
+app.use(express.json()); 
 // --- API: Create Session ---
 app.post('/api/sessions', async (req, res) => {
   const { start_time } = req.body;
