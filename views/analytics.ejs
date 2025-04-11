@@ -88,7 +88,7 @@
     type: 'bar',
     data: {
       labels: peakData.map(r => `${r.hour}:00`),
-      datasets: [{ label: 'Participants', data: peakData.map(r => r.total), backgroundColor: '#0d6efd' }]
+      datasets: [{ label: 'Participants', data: peakData.map(r => parseInt(r.total || 0)), backgroundColor: '#0d6efd' }]
     }
   });
 
@@ -96,7 +96,7 @@
     type: 'bar',
     data: {
       labels: durationData.map(r => `Bucket ${r.bucket}`),
-      datasets: [{ label: 'People', data: durationData.map(r => r.total), backgroundColor: '#6f42c1' }]
+      datasets: [{ label: 'People', data: durationData.map(r => parseInt(r.total || 0)), backgroundColor: '#6f42c1' }]
     }
   });
 
@@ -104,7 +104,7 @@
     type: 'pie',
     data: {
       labels: groupSizeData.map(r => r.size_category),
-      datasets: [{ data: groupSizeData.map(r => r.total_sessions), backgroundColor: ['#0d6efd', '#ffc107', '#dc3545'] }]
+      datasets: [{ data: groupSizeData.map(r => parseInt(r.total_sessions || 0)), backgroundColor: ['#0d6efd', '#ffc107', '#dc3545'] }]
     }
   });
 
@@ -114,7 +114,7 @@
     label: g,
     data: months.map(m => {
       const row = genderTrends.find(r => r.month === m && r.gender === g);
-      return row ? row.total : 0;
+      return row ? parseInt(row.total || 0) : 0;
     }),
     borderColor: g === 'Male' ? '#0d6efd' : '#e83e8c',
     fill: false
@@ -131,7 +131,7 @@
     label: t,
     data: returnMonths.map(m => {
       const row = returnData.find(r => r.month === m && r.type === t);
-      return row ? r.total : 0;
+      return row ? parseInt(row.total || 0) : 0;
     }),
     backgroundColor: t === 'New' ? '#198754' : '#6c757d'
   }));
@@ -146,7 +146,7 @@
     type: 'bar',
     data: {
       labels: sessionsPerMonth.map(r => r.month),
-      datasets: [{ label: 'Sessions', data: sessionsPerMonth.map(r => r.total_sessions), backgroundColor: '#0dcaf0' }]
+      datasets: [{ label: 'Sessions', data: sessionsPerMonth.map(r => parseInt(r.total_sessions || 0)), backgroundColor: '#0dcaf0' }]
     }
   });
 
@@ -154,12 +154,10 @@
     type: 'bar',
     data: {
       labels: spendingPerMonth.map(r => r.month),
-      datasets: [{ label: 'Total Spent ($)', data: spendingPerMonth.map(r => r.total_spent), backgroundColor: '#fd7e14' }]
+      datasets: [{ label: 'Total Spent ($)', data: spendingPerMonth.map(r => parseFloat(r.total_spent || 0)), backgroundColor: '#fd7e14' }]
     }
   });
 </script>
-
-
 
 </body>
 </html>
