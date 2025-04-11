@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,54 +8,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar {
-      width: 250px; height: 100vh;
-      background-color: #343a40;
-      position: fixed; color: #fff;
-    }
-    .sidebar h2 {
-      padding: 20px; font-size: 20px;
-      background-color: #212529; margin: 0;
-    }
-    .sidebar a {
-      color: #adb5bd; display: block;
-      padding: 15px 20px; text-decoration: none;
-    }
-    .sidebar a:hover, .sidebar a.active {
-      background-color: #495057; color: #fff;
-    }
-    .main {
-      margin-left: 250px; padding: 30px;
-    }
+    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; }
+    .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
+    .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
+    .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
+    .main { margin-left: 250px; padding: 30px; }
     .card { border: none; border-radius: 10px; }
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <h2>Admin Panel</h2>
-    <a href="/admin/dashboard">Dashboard</a>
-    <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
-    <a href="/admin/reports" class="<%= title === 'Reports' ? 'active' : '' %>">Reports</a>
-    <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
-    <a href="/admin/logout">Logout</a>
-  </div>
-  <div class="main">
-    
-<h2 class="mb-4">📄 Reports</h2>
-<div class="card p-3 shadow-sm">
-  <div class="d-flex justify-content-between align-items-center">
-    <label>Filter by Month:
-      <select id="reportMonth" class="form-select form-select-sm w-auto d-inline-block">
-        <option>January</option><option>February</option><option>March</option><option>April</option>
-      </select>
-    </label>
-    <button class="btn btn-sm btn-outline-secondary">Export CSV</button>
-  </div>
-</div>
-<div id="reportResults" class="mt-3">
-  <p>💡 Sample session data will appear here...</p>
+<div class="sidebar">
+  <h2>Admin Panel</h2>
+  <a href="/admin/dashboard">Dashboard</a>
+  <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
+  <a href="/admin/reports" class="<%= title === 'Reports' ? 'active' : '' %>">Reports</a>
+  <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
+  <a href="/admin/logout">Logout</a>
 </div>
 
+<div class="main">
+  <h2 class="mb-4">📄 Reports</h2>
+  <div class="card p-3 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center">
+      <label>Filter by Month:
+        <select id="reportMonth" class="form-select form-select-sm w-auto d-inline-block">
+          <option>January</option><option>February</option><option>March</option><option>April</option>
+        </select>
+      </label>
+      <button class="btn btn-sm btn-outline-secondary">Export CSV</button>
+    </div>
   </div>
+  <div id="reportResults" class="mt-3">
+    <p>💡 Sample session data will appear here...</p>
+  </div>
+</div>
 </body>
 </html>
