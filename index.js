@@ -145,7 +145,7 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
 });
 
 app.get('/admin/settings', requireAdmin, (req, res) => {
-  res.send('<h1>Settings Page (Coming Soon)</h1>');
+  res.send("settings");
 });
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
