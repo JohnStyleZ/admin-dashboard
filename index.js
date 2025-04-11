@@ -251,9 +251,20 @@ app.get('/admin/reports', requireAdmin, (req, res) => {
   res.render('reports', { admin: req.session.admin, title: 'Reports' });
 });
 
-app.get('/admin/settings', requireAdmin, (req, res) => {
-  res.render('settings', { admin: req.session.admin, title: 'Settings' });
+app.get('/admin/settings', async (req, res) => {
+  const adminId = req.session.admin_id;
+  if (!adminId) return res.redirect('/admin/login');
+
+  const adminRes = await pool.query('SELECT * FROM admins WHERE admin_id = $1', [adminId]);
+  const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
+
+  res.render('settings', {
+    title: 'Settings',
+    admin: adminRes.rows[0],
+    locations: locationsRes.rows
+  });
 });
+
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
