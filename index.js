@@ -211,6 +211,7 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
   const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
   const queryLocationId = req.query.location_id;
   const selectedLocationId = queryLocationId || adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
+  const participantsRes = await pool.query('SELECT * FROM participants ORDER BY participant_id');
 
   const ratesRes = await pool.query(
     'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
@@ -226,7 +227,8 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
     locations: locationsRes.rows,
     selectedLocationId,
     rates: ratesRes.rows,
-    message
+    message,
+    participants: participantsRes.rows
   });
 });
 
@@ -307,6 +309,31 @@ app.post('/admin/settings/save-rates', async (req, res) => {
   } catch (err) {
     console.error("Error saving rates:", err);
     res.status(500).send("Failed to save rates.");
+  }
+});
+
+app.post('/admin/settings/update-participants', requireAdmin, async (req, res) => {
+  try {
+    const updates = Object.entries(req.body);
+    const grouped = {};
+
+    updates.forEach(([key, value]) => {
+      const [field, id] = key.split('_');
+      if (!grouped[id]) grouped[id] = {};
+      grouped[id][field] = value;
+    });
+
+    for (const id in grouped) {
+      const { name, gender } = grouped[id];
+      await pool.query('UPDATE participants SET name = $1, gender = $2 WHERE participant_id = $3', [name, gender || null, id]);
+    }
+
+    req.session.message = '✅ Participant changes saved!';
+    res.redirect('/admin/settings');
+  } catch (err) {
+    console.error('Failed to update participants:', err);
+    req.session.message = '❌ Failed to update participants.';
+    res.redirect('/admin/settings');
   }
 });
 
