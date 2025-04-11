@@ -26,14 +26,67 @@
   <a href="/admin/logout">Logout</a>
 </div>
 
-<div class="main">
+<div class="main p-4">
   <h2 class="mb-4">⚙️ Settings</h2>
-  <div class="card p-3 shadow-sm">
-    <h5>Account Info</h5>
-    <label>Email: <input type="email" class="form-control" value="<%= admin.email %>"></label>
-    <label class="mt-3">Change Password: <input type="password" class="form-control"></label>
-    <button class="btn btn-primary mt-3">Save Changes</button>
+
+  <div class="row g-4">
+    <!-- Admin Info -->
+    <div class="col-md-6">
+      <div class="card p-4 shadow-sm">
+        <h5>👤 Admin Profile</h5>
+        <form action="/admin/settings/update-profile" method="POST">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" value="<%= admin.username %>" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input name="email" type="email" class="form-control" value="<%= admin.email %>" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Update Email</button>
+        </form>
+
+        <hr>
+
+        <h6 class="mt-3">🔒 Change Password</h6>
+        <form action="/admin/settings/update-password" method="POST">
+          <div class="mb-2">
+            <input name="current_password" type="password" class="form-control" placeholder="Current Password" required>
+          </div>
+          <div class="mb-2">
+            <input name="new_password" type="password" class="form-control" placeholder="New Password" required>
+          </div>
+          <button type="submit" class="btn btn-warning">Change Password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Location Settings -->
+    <div class="col-md-6">
+      <div class="card p-4 shadow-sm">
+        <h5>📍 Location Preferences</h5>
+
+        <form action="/admin/settings/update-location" method="POST" class="mb-3">
+          <label class="form-label">Default Location</label>
+          <select name="location_id" class="form-select mb-2" required>
+            <% locations.forEach(loc => { %>
+              <option value="<%= loc.location_id %>" <%= admin.location_id === loc.location_id ? 'selected' : '' %>>
+                <%= loc.name %>
+              </option>
+            <% }) %>
+          </select>
+          <button type="submit" class="btn btn-success">Set Default</button>
+        </form>
+
+        <form action="/admin/settings/add-location" method="POST">
+          <label class="form-label">Add New Location</label>
+          <input name="name" type="text" class="form-control mb-2" placeholder="e.g. Music Tunnel Mongkok" required>
+          <button type="submit" class="btn btn-secondary">Add Location</button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
+
 </body>
 </html>
