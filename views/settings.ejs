@@ -56,32 +56,50 @@
     </div>
 
     <!-- Rate Settings with Location -->
-    <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>📈 Rate Settings</h5>
-        <form action="/admin/settings/update-rates" method="POST">
-          <div class="mb-3">
-            <label class="form-label">Select Location</label>
-            <select class="form-select" name="location_id" onchange="this.form.submit()">
-              <% locations.forEach(loc => { %>
-                <option value="<%= loc.location_id %>" <%= loc.location_id == selectedLocationId ? 'selected' : '' %>>
-                  <%= loc.name %>
-                </option>
-              <% }) %>
-            </select>
+        <h5 class="mb-2">📉 Rate Settings</h5>
+      
+        <form action="/admin/settings/save-rates" method="POST">
+          <label class="form-label">Select Location</label>
+          <select name="location_id" class="form-select mb-3" onchange="this.form.submit()">
+            <% locations.forEach(loc => { %>
+              <option value="<%= loc.location_id %>" <%= loc.location_id == selectedLocationId ? 'selected' : '' %>>
+                <%= loc.name %>
+              </option>
+            <% }) %>
+          </select>
+      
+          <div class="row fw-bold mb-2">
+            <div class="col-4">Group Size</div>
+            <div class="col-4">2PM–7PM Rate ($/hr)</div>
+            <div class="col-4">After 7PM Rate ($/hr)</div>
           </div>
-          <% rateSettings.forEach(rate => { %>
+      
+          <% const groupSizes = [
+            { min: 1, max: 3 },
+            { min: 4, max: 5 },
+            { min: 6, max: 8 },
+            { min: 9, max: 10 },
+            { min: 11, max: 15 },
+            { min: 16, max: 20 }
+          ]; %>
+      
+          <% groupSizes.forEach(group => {
+            const rate = rates.find(r => r.group_min === group.min && r.group_max === group.max) || {};
+          %>
             <div class="row mb-2">
-              <div class="col-4"><%= rate.group_size %></div>
+              <div class="col-4"><%= group.min %>–<%= group.max %> people</div>
               <div class="col-4">
-                <input type="number" class="form-control" name="dayRate_<%= rate.id %>" value="<%= rate.day_rate %>" placeholder="2PM–7PM Rate">
+                <input type="number" name="day_<%= group.min %>_<%= group.max %>" class="form-control"
+                  value="<%= rate.rate_day || '' %>" required />
               </div>
               <div class="col-4">
-                <input type="number" class="form-control" name="nightRate_<%= rate.id %>" value="<%= rate.night_rate %>" placeholder="After 7PM Rate">
+                <input type="number" name="night_<%= group.min %>_<%= group.max %>" class="form-control"
+                  value="<%= rate.rate_night || '' %>" required />
               </div>
-              <input type="hidden" name="rateId_<%= rate.id %>" value="<%= rate.id %>">
             </div>
           <% }) %>
+      
           <button type="submit" class="btn btn-success mt-3">Save Rates</button>
         </form>
       </div>
