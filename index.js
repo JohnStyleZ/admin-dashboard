@@ -256,6 +256,34 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
 });
 
 
+// Email update
+app.post('/admin/settings/update-profile', async (req, res) => {
+  const { email } = req.body;
+  const adminId = req.session.admin_id;
+  await pool.query('UPDATE admins SET email = $1 WHERE admin_id = $2', [email, adminId]);
+  res.redirect('/admin/settings');
+});
+
+// Password update
+app.post('/admin/settings/update-password', async (req, res) => {
+  const { current_password, new_password } = req.body;
+  const adminId = req.session.admin_id;
+  const result = await pool.query('SELECT password_hash FROM admins WHERE admin_id = $1', [adminId]);
+  const hashCurrent = crypto.createHash('sha256').update(current_password).digest('hex');
+
+  if (result.rows[0].password_hash === hashCurrent) {
+    const hashNew = crypto.createHash('sha256').update(new_password).digest('hex');
+    await pool.query('UPDATE admins SET password_hash = $1 WHERE admin_id = $2', [hashNew, adminId]);
+  }
+  res.redirect('/admin/settings');
+});
+
+// Add location
+app.post('/admin/settings/add-location', async (req, res) => {
+  const { name } = req.body;
+  await pool.query('INSERT INTO locations (name) VALUES ($1)', [name]);
+  res.redirect('/admin/settings');
+});
 
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
