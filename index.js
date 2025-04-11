@@ -1,5 +1,3 @@
-here is the current index.js 
-
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
