@@ -4,6 +4,7 @@ const session = require('express-session');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,8 @@ app.use(session({
   resave: false,
   saveUninitialized: false
 }));
+
+app.use(cors());
 
 // Middleware for route protection
 function requireAdmin(req, res, next) {
