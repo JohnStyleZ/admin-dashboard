@@ -63,27 +63,39 @@
 
     <!-- Location Settings -->
     <div class="col-md-6">
-      <div class="card p-4 shadow-sm">
-        <h5>📍 Location Preferences</h5>
-
-        <form action="/admin/settings/update-location" method="POST" class="mb-3">
-          <label class="form-label">Default Location</label>
-          <select name="location_id" class="form-select mb-2" required>
-            <% locations.forEach(loc => { %>
-              <option value="<%= loc.location_id %>" <%= admin.location_id === loc.location_id ? 'selected' : '' %>>
-                <%= loc.name %>
-              </option>
-            <% }) %>
-          </select>
-          <button type="submit" class="btn btn-success">Set Default</button>
-        </form>
-
-        <form action="/admin/settings/add-location" method="POST">
-          <label class="form-label">Add New Location</label>
-          <input name="name" type="text" class="form-control mb-2" placeholder="e.g. Music Tunnel Mongkok" required>
-          <button type="submit" class="btn btn-secondary">Add Location</button>
+      <div class="card p-4 shadow-sm mt-4">
+        <h5>💵 Rate Settings</h5>
+        <form action="/admin/settings/update-rates" method="POST">
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center">
+              <thead class="table-light">
+                <tr>
+                  <th>Group Size</th>
+                  <th>2PM–7PM Rate ($/hr)</th>
+                  <th>After 7PM Rate ($/hr)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rateSettings.forEach((rate, i) => { %>
+                  <tr>
+                    <td><%= rate.range_label %></td>
+                    <td>
+                      <input type="number" step="1" name="day_<%= i %>" class="form-control" value="<%= rate.day_rate %>" required>
+                    </td>
+                    <td>
+                      <input type="number" step="1" name="night_<%= i %>" class="form-control" value="<%= rate.night_rate %>" required>
+                    </td>
+                    <input type="hidden" name="range_<%= i %>" value="<%= rate.range_label %>">
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <input type="hidden" name="count" value="<%= rateSettings.length %>">
+          <button class="btn btn-primary mt-3">Save Rates</button>
         </form>
       </div>
+
     </div>
   </div>
 </div>
