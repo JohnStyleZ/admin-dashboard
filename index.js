@@ -284,7 +284,52 @@ app.post('/admin/settings/add-location', async (req, res) => {
   await pool.query('INSERT INTO locations (name) VALUES ($1)', [name]);
   res.redirect('/admin/settings');
 });
+// Save rates
+app.post('/admin/settings/save-rates', async (req, res) => {
+  const { location_id, ...ratesInput } = req.body;
 
+  const groupSizes = [
+    { min: 1, max: 3 },
+    { min: 4, max: 5 },
+    { min: 6, max: 8 },
+    { min: 9, max: 10 },
+    { min: 11, max: 15 },
+    { min: 16, max: 20 }
+  ];
+
+  try {
+    for (const group of groupSizes) {
+      const dayKey = `day_${group.min}_${group.max}`;
+      const nightKey = `night_${group.min}_${group.max}`;
+      const rangeLabel = `${group.min}–${group.max} people`;
+
+      const dayRate = parseFloat(ratesInput[dayKey]);
+      const nightRate = parseFloat(ratesInput[nightKey]);
+
+      const existsRes = await pool.query(
+        'SELECT id FROM rate_settings WHERE location_id = $1 AND group_min = $2 AND group_max = $3',
+        [location_id, group.min, group.max]
+      );
+
+      if (existsRes.rows.length > 0) {
+        await pool.query(
+          'UPDATE rate_settings SET day_rate = $1, night_rate = $2, range_label = $3 WHERE id = $4',
+          [dayRate, nightRate, rangeLabel, existsRes.rows[0].id]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO rate_settings (location_id, group_min, group_max, day_rate, night_rate, range_label) VALUES ($1, $2, $3, $4, $5, $6)',
+          [location_id, group.min, group.max, dayRate, nightRate, rangeLabel]
+        );
+      }
+    }
+
+    res.redirect(`/admin/settings?location_id=${location_id}`);
+  } catch (err) {
+    console.error("Error saving rates:", err);
+    res.status(500).send("Failed to save rates.");
+  }
+});
 
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
