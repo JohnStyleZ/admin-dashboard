@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Ensure proper scaling on mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Tunnel Cost Calculator</title>
+  <!-- Font Awesome CDN for icons (integrity attribute removed) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
+  <style>
+    /* Global button style for consistent sizing, no borders */
+    button {
+      box-sizing: border-box;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 120px;
+      margin: 10px 0;
+      border: none;
+      outline: none;
+    }
+    body {
+      background: #f5f5f5;
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    /* Fixed container centered in the viewport */
+    .container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90vw;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      padding: 20px 30px;
+    }
+    h1, h2, h3 {
+      color: #333;
+      margin-top: 0;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-weight: 500;
+    }
+    input[type="time"],
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .participant {
+      position: relative;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .remove-btn {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #f44336;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .remove-btn:hover {
+      background: #d32f2f;
+    }
+    .breakdown {
+      font-size: 14px;
+      margin-left: 20px;
+    }
+    hr {
+      margin: 20px 0;
+      border: 0;
+      border-top: 1px solid #eee;
+    }
+    .summary {
+      background: #e9ecef;
+      padding: 15px;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    /* Session Actions container with toggle button */
+    #sessionActions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    /* Results Header */
+    #resultHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    /* Inline Copy Results Button (aligned right) */
+    #copyResultsInline {
+      background: #28a745;
+      color: #fff;
+    }
+    #copyResultsInline:hover {
+      background: #218838;
+    }
+    /* Floating Copy Results Button */
+    #copyResultsFloating {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+      background: #28a745;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 120px;
+      display: none;
+    }
+    #copyResultsFloating:hover {
+      background: #218838;
+    }
+    /* Participant Actions container */
+    #participantActions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    /* Data Actions container for export/import */
+    #dataActions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    /* Clear Data Button styled in red */
+    #clearDataBtn {
+      background: #dc3545;
+      color: #fff;
+    }
+    #clearDataBtn:hover {
+      background: #c82333;
+    }
+    a.spare-link {
+      display: none;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 18px;
+      }
+      input, button {
+        font-size: 18px;
+      }
+      .breakdown {
+        font-size: 16px;
+      }
+      .summary {
+        font-size: 18px;
+      }
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 4px;
+      z-index: 1000;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Music Tunnel Cost Calculator</h1>
+    
+    <!-- Session Toggle Button -->
+    <div id="sessionActions">
+      <button id="sessionToggleBtn" onclick="toggleSession()">
+        <i class="fas fa-play"></i> Start Session
+      </button>
+    </div>
+    
+    <!-- Only asking for Actual Total Paid -->
+    <div>
+      <label for="actualPaid">Actual Total Paid ($):</label>
+      <input type="number" id="actualPaid" placeholder="e.g., 100.00" step="0.01">
+    </div>
+    
+    <h2>Participants</h2>
+    <p>Enter each participant’s join and leave time below.</p>
+    <div id="participants"></div>
+    <div id="participantActions">
+      <button onclick="addParticipantFromButton()">
+        <i class="fas fa-plus"></i> Add Participant
+      </button>
+      <button id="clearDataBtn" onclick="clearData()">
+        <i class="fas fa-trash"></i> Clear Data
+      </button>
+    </div>
+    
+    <!-- Data Actions: Export/Import -->
+    <div id="dataActions">
+      <button onclick="exportData()">
+        <i class="fas fa-download"></i> Export Data
+      </button>
+      <button onclick="importData()">
+        <i class="fas fa-upload"></i> Import Data
+      </button>
+    </div>
+    
+    <br>
+    <button onclick="calculateCosts()">
+      <i class="fas fa-calculator"></i> Calculate Costs
+    </button>
+    
+    <div id="resultHeader">
+      <h2 style="margin: 0;">Results</h2>
+      <button id="copyResultsInline" onclick="copyResults()">
+        <i class="fas fa-copy"></i> Copy Results
+      </button>
+    </div>
+    <div id="results"></div>
+  </div>
+  
+  <!-- Floating Copy Button -->
+  <button id="copyResultsFloating" onclick="copyResults()">
+    <i class="fas fa-copy"></i> Copy Results
+  </button>
+  
+  <script>
+    // Global session variables
+    let sessionStartTime = null;
+    let sessionEndTime = null;
+    
+    // --- Utility Functions ---
+    function pad(num) {
+      return num.toString().padStart(2, '0');
+    }
+    
+    function timeToMinutes(timeStr) {
+      const parts = timeStr.split(':');
+      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+    
+    function formatTime(totalMinutes) {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${pad(hours)}:${pad(minutes)}`;
+    }
+    
+    function getCurrentLocalTime() {
+      const now = new Date();
+      return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+    
+    // --- Notification Function ---
+    function showNotification(message) {
+      const notif = document.createElement('div');
+      notif.className = 'notification';
+      notif.textContent = message;
+      document.body.appendChild(notif);
+      setTimeout(() => {
+        notif.remove();
+      }, 3000);
+    }
+    
+    // --- Session Toggle Function ---
+    function toggleSession() {
+      const btn = document.getElementById("sessionToggleBtn");
+      if (!sessionStartTime) {
+        if (confirm("Are you sure you want to start the session?")) {
+          sessionStartTime = getCurrentLocalTime();
+          const startMins = timeToMinutes(sessionStartTime);
+          const participantElems = document.querySelectorAll('.participant');
+          participantElems.forEach(elem => {
+            const joinInput = elem.querySelector('.joinTime');
+            const joinMins = timeToMinutes(joinInput.value);
+            if (Math.abs(joinMins - startMins) <= 10) {
+              joinInput.value = sessionStartTime;
+            }
+          });
+          showNotification(`Session started at ${sessionStartTime}.`);
+          btn.innerHTML = '<i class="fas fa-stop"></i> End Session';
+          btn.style.background = '#dc3545'; // red
+        }
+      } else if (!sessionEndTime) {
+        if (confirm("Are you sure you want to end the session?")) {
+          sessionEndTime = getCurrentLocalTime();
+          const participantElems = document.querySelectorAll('.participant');
+          participantElems.forEach(elem => {
+            const leaveInput = elem.querySelector('.leaveTime');
+            // Only update if leave time is empty
+            if (!leaveInput.value) {
+              leaveInput.value = sessionEndTime;
+            }
+          });
+          showNotification(`Session ended at ${sessionEndTime}.`);
+          btn.innerHTML = '<i class="fas fa-check"></i> Session Ended';
+          btn.style.background = '#6c757d'; // gray
+          btn.disabled = true;
+        }
+      }
+    }
+    
+    // --- Global Cost Function ---
+    function getHourlyRate(activeCount, currentTime) {
+      const sevenPM = 19 * 60;
+      const isEvening = currentTime >= sevenPM;
+      if (activeCount >= 1 && activeCount <= 3) {
+        return isEvening ? 39 : 29;
+      } else if (activeCount <= 5) {
+        return isEvening ? 59 : 49;
+      } else if (activeCount <= 8) {
+        return isEvening ? 79 : 69;
+      } else if (activeCount <= 10) {
+        return isEvening ? 99 : 89;
+      } else if (activeCount <= 15) {
+        return isEvening ? 129 : 109;
+      } else if (activeCount <= 20) {
+        return isEvening ? 139 : 129;
+      } else {
+        return isEvening ? 139 : 129;
+      }
+    }
+    
+    // --- Persistence Functions ---
+    function saveParticipants() {
+      const participants = [];
+      const participantElems = document.querySelectorAll('.participant');
+      participantElems.forEach(elem => {
+        const name = elem.querySelector('.participantName').value;
+        const joinTime = elem.querySelector('.joinTime').value;
+        const leaveTime = elem.querySelector('.leaveTime').value;
+        if (name || joinTime || leaveTime) {
+          participants.push({ name, joinTime, leaveTime });
+        }
+      });
+      localStorage.setItem("participants", JSON.stringify(participants));
+    }
+    
+    function loadParticipants() {
+      const saved = localStorage.getItem("participants");
+      if (saved) {
+        try {
+          const participants = JSON.parse(saved);
+          participants.forEach(p => {
+            addParticipant(p);
+          });
+          // Auto-detect session status on import:
+          const hasEmptyLeave = participants.some(p => !p.leaveTime);
+          const sessionBtn = document.getElementById("sessionToggleBtn");
+          if (hasEmptyLeave) {
+            sessionStartTime = participants.reduce((min, p) => {
+              let jt = timeToMinutes(p.joinTime);
+              return jt < min ? jt : min;
+            }, Infinity);
+            sessionEndTime = null;
+            sessionBtn.innerHTML = '<i class="fas fa-stop"></i> End Session';
+            sessionBtn.style.background = '#dc3545';
+            sessionBtn.disabled = false;
+          } else {
+            sessionStartTime = participants.reduce((min, p) => {
+              let jt = timeToMinutes(p.joinTime);
+              return jt < min ? jt : min;
+            }, Infinity);
+            sessionEndTime = participants.reduce((max, p) => {
+              let lt = timeToMinutes(p.leaveTime);
+              return lt > max ? lt : max;
+            }, 0);
+            sessionBtn.innerHTML = '<i class="fas fa-check"></i> Session Ended';
+            sessionBtn.style.background = '#6c757d';
+            sessionBtn.disabled = true;
+          }
+        } catch (e) {
+          console.error("Error parsing participant data", e);
+        }
+      }
+    }
+    
+    // --- Participant Block ---
+    function addParticipant(participantData) {
+      const container = document.getElementById('participants');
+      const div = document.createElement('div');
+      div.className = 'participant';
+      
+      const removeBtn = document.createElement('div');
+      removeBtn.className = 'remove-btn';
+      removeBtn.title = "Remove this participant";
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', () => {
+        div.remove();
+        saveParticipants();
+      });
+      div.appendChild(removeBtn);
+      
+      const contentDiv = document.createElement('div');
+      let suggestedJoin = getCurrentLocalTime();
+      let suggestedLeave = "";
+      
+      const nameVal = participantData ? participantData.name : "";
+      const joinVal = participantData ? participantData.joinTime : suggestedJoin;
+      const leaveVal = participantData ? participantData.leaveTime : suggestedLeave;
+      
+      contentDiv.innerHTML = `
+        <label>Name: <input type="text" class="participantName" placeholder="Name" value="${nameVal}"></label>
+        <label>Join Time: <input type="time" class="joinTime" value="${joinVal}"></label>
+        <label>Leave Time: <input type="time" class="leaveTime" value="${leaveVal}"></label>
+      `;
+      
+      contentDiv.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', saveParticipants);
+      });
+      
+      div.appendChild(contentDiv);
+      container.appendChild(div);
+      saveParticipants();
+    }
+    
+    // New function: Replicate spare NFC link behavior on Add Participant button.
+    function addParticipantFromButton() {
+      const name = prompt("Enter your name:");
+      if (!name) return;
+      const currentTime = getCurrentLocalTime();
+      const participantElems = document.querySelectorAll('.participant');
+      let found = false;
+      participantElems.forEach(elem => {
+        const nameInput = elem.querySelector('.participantName');
+        if (nameInput && nameInput.value.trim().toLowerCase() === name.trim().toLowerCase()) {
+          const leaveInput = elem.querySelector('.leaveTime');
+          if (!leaveInput.value) {
+            leaveInput.value = currentTime;
+            showNotification(`Logged leave time for ${name} at ${currentTime}`);
+          } else {
+            showNotification(`Participant ${name} already has a leave time set.`);
+          }
+          found = true;
+        }
+      });
+      if (!found) {
+        addParticipant({ name: name, joinTime: currentTime, leaveTime: "" });
+        showNotification(`Logged join time for ${name} at ${currentTime}`);
+      }
+      saveParticipants();
+    }
+    
+    // --- Export and Import Functions ---
+    function exportData() {
+      const data = localStorage.getItem("participants");
+      if (!data) {
+        alert("No data to export.");
+      } else {
+        prompt("Copy the exported data:", data);
+      }
+    }
+    
+    function importData() {
+      const data = prompt("Paste the exported data:");
+      if (!data) return;
+      try {
+        JSON.parse(data); // Validate JSON
+        localStorage.setItem("participants", data);
+        document.getElementById("participants").innerHTML = "";
+        loadParticipants();
+        showNotification("Data imported successfully.");
+      } catch (e) {
+        alert("Invalid data format. Please check and try again.");
+      }
+    }
+    
+    // --- Calculation and Copy Functions ---
+    let lastTextResult = "";
+    
+    function calculateCosts() {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+      
+      const actualPaid = parseFloat(document.getElementById('actualPaid').value);
+      
+      const participantElems = document.querySelectorAll('.participant');
+      const participants = [];
+      const joinTimes = [];
+      const leaveTimes = [];
+      participantElems.forEach(elem => {
+        const name = elem.querySelector('.participantName').value.trim() || 'Unnamed';
+        const joinTime = elem.querySelector('.joinTime').value;
+        const leaveTime = elem.querySelector('.leaveTime').value;
+        if (!joinTime || !leaveTime) return;
+        joinTimes.push(timeToMinutes(joinTime));
+        leaveTimes.push(timeToMinutes(leaveTime));
+        participants.push({ name, joinTime, leaveTime, computedCost: 0, breakdown: [] });
+      });
+      
+      if (participants.length === 0) {
+        resultsDiv.innerText = 'Please add at least one valid participant.';
+        return;
+      }
+      
+      const sessionStartMinutes = Math.min(...joinTimes);
+      const sessionEndMinutes = Math.max(...leaveTimes);
+      const duration = sessionEndMinutes - sessionStartMinutes;
+      if (duration <= 0) {
+        resultsDiv.innerText = 'Invalid time range among participants.';
+        return;
+      }
+      
+      let computedSessionTotal = 0;
+      for (let minute = 0; minute < duration; minute++) {
+        const currentTime = sessionStartMinutes + minute;
+        const activeParticipants = participants.filter(p => {
+          const jt = timeToMinutes(p.joinTime);
+          const lt = timeToMinutes(p.leaveTime);
+          return jt <= currentTime && currentTime < lt;
+        });
+        const activeCount = activeParticipants.length;
+        if (activeCount === 0) continue;
+        const groupHourlyRate = getHourlyRate(activeCount, currentTime);
+        const costForThisMinute = groupHourlyRate / 60;
+        computedSessionTotal += costForThisMinute;
+        const costPerPerson = costForThisMinute / activeCount;
+        
+        activeParticipants.forEach(p => {
+          p.computedCost += costPerPerson;
+          if (p.breakdown.length > 0) {
+            let last = p.breakdown[p.breakdown.length - 1];
+            if (last.effectiveRate === costPerPerson && last.endMinute === minute) {
+              last.endMinute = minute + 1;
+              last.cost += costPerPerson;
+            } else {
+              p.breakdown.push({
+                startMinute: minute,
+                endMinute: minute + 1,
+                effectiveRate: costPerPerson,
+                cost: costPerPerson,
+                groupHourlyRate: groupHourlyRate,
+                activeCount: activeCount
+              });
+            }
+          } else {
+            p.breakdown.push({
+              startMinute: minute,
+              endMinute: minute + 1,
+              effectiveRate: costPerPerson,
+              cost: costPerPerson,
+              groupHourlyRate: groupHourlyRate,
+              activeCount: activeCount
+            });
+          }
+        });
+      }
+      
+      let factor = 1;
+      if (!isNaN(actualPaid) && actualPaid > 0) {
+        factor = actualPaid / computedSessionTotal;
+      }
+      
+      participants.forEach(p => {
+        p.adjustedCost = p.computedCost * factor;
+      });
+      
+      let html = '<ul>';
+      participants.forEach(p => {
+        html += `<li><strong>${p.name}</strong>:<br>
+                 Computed Cost: $${p.computedCost.toFixed(2)}<br>
+                 <strong>Adjusted Cost:</strong> $${p.adjustedCost.toFixed(2)}<br>
+                 <em>Breakdown:</em><ul class="breakdown">`;
+        p.breakdown.forEach(interval => {
+          const intervalStart = formatTime(sessionStartMinutes + interval.startMinute);
+          const intervalEnd = formatTime(sessionStartMinutes + interval.endMinute);
+          const minutesSpent = interval.endMinute - interval.startMinute;
+          html += `<li>From ${intervalStart} to ${intervalEnd} (${minutesSpent} minute${minutesSpent > 1 ? 's' : ''})<br>
+                   Group rate: $${interval.groupHourlyRate}/hr with ${interval.activeCount} active<br>
+                   Each paid $${interval.effectiveRate.toFixed(4)}/min → $${interval.cost.toFixed(2)}</li>`;
+        });
+        html += '</ul></li>';
+      });
+      html += '</ul>';
+      
+      html += `<hr>
+               <h3>Summary</h3>
+               <div class="summary">
+                 <ul>
+                   <li>Computed Session Total: $${computedSessionTotal.toFixed(2)}</li>
+                   <li>Actual Total Paid: ${!isNaN(actualPaid) && actualPaid > 0 ? '$' + actualPaid.toFixed(2) : 'Not provided (using computed total)'}</li>
+                   <li>Adjustment Factor: ${factor.toFixed(4)}</li>
+                   <li>Sum of Adjusted Participant Costs: $${participants.reduce((s, p) => s + p.adjustedCost, 0).toFixed(2)}</li>
+                 </ul>
+               </div>`;
+      
+      resultsDiv.innerHTML = html;
+      
+      // Auto-scroll so that the element with id "resultHeader" is at the top.
+      document.getElementById("resultHeader").scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      let copyTextResult = "Participant Costs:\n\n";
+      participants.forEach(p => {
+        copyTextResult += `${p.name}: $${p.adjustedCost.toFixed(2)}\n`;
+      });
+      lastTextResult = copyTextResult;
+      
+      saveParticipants();
+    }
+    
+    function copyResults() {
+      if (!lastTextResult) {
+        alert("No results available to copy. Please calculate the results first.");
+        return;
+      }
+      navigator.clipboard.writeText(lastTextResult).then(() => {
+        alert("Participant names and costs copied to clipboard!");
+      }).catch(err => {
+        alert("Failed to copy results: " + err);
+      });
+    }
+    
+    // --- NFC Tag Integration via URL Query Parameter ---
+    function processNfcScan() {
+      const params = new URLSearchParams(window.location.search);
+      let scannedName = params.get("name");
+      if (!scannedName && params.has("new")) {
+        scannedName = prompt("Enter your name:");
+      }
+      if (scannedName) {
+        const currentTime = getCurrentLocalTime();
+        const participantElems = document.querySelectorAll('.participant');
+        let found = false;
+        participantElems.forEach(elem => {
+          const nameInput = elem.querySelector('.participantName');
+          if (nameInput && nameInput.value.trim().toLowerCase() === scannedName.trim().toLowerCase()) {
+            const leaveInput = elem.querySelector('.leaveTime');
+            if (!leaveInput.value || leaveInput.value < currentTime) {
+              leaveInput.value = currentTime;
+              showNotification(`Logged leave time for ${scannedName} at ${currentTime}`);
+            } else {
+              showNotification(`Participant ${scannedName} already has a leave time set.`);
+            }
+            found = true;
+          }
+        });
+        if (!found) {
+          addParticipant({ name: scannedName, joinTime: getCurrentLocalTime(), leaveTime: "" });
+          showNotification(`Logged join time for ${scannedName} at ${getCurrentLocalTime()}`);
+        }
+        saveParticipants();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+    
+    // --- Clear Data Function ---
+    function clearData() {
+      console.log("clearData called");
+      if (confirm("Are you sure you want to clear all participant data?")) {
+        localStorage.removeItem("participants");
+        document.getElementById('participants').innerHTML = "";
+        document.getElementById('results').innerHTML = "";
+        // Reset session variables and toggle button
+        sessionStartTime = null;
+        sessionEndTime = null;
+        const sessionBtn = document.getElementById("sessionToggleBtn");
+        sessionBtn.innerHTML = '<i class="fas fa-play"></i> Start Session';
+        sessionBtn.style.background = "";
+        sessionBtn.disabled = false;
+        showNotification("All data cleared!");
+      }
+    }
+    
+    window.addEventListener('load', () => {
+      loadParticipants();
+      processNfcScan();
+      
+      // Scroll event listener to toggle the floating copy button
+      const container = document.querySelector('.container');
+      const resultHeader = document.getElementById('resultHeader');
+      const floatingCopy = document.getElementById('copyResultsFloating');
+      
+      container.addEventListener('scroll', () => {
+        if (container.scrollTop > (resultHeader.offsetTop + resultHeader.offsetHeight)) {
+          floatingCopy.style.display = 'block';
+        } else {
+          floatingCopy.style.display = 'none';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
