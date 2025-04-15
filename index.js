@@ -342,20 +342,7 @@ app.post('/admin/settings/update-participants', requireAdmin, async (req, res) =
 });
 
 app.use(express.json()); 
-// --- API: Create Session ---
-app.post('/api/sessions', async (req, res) => {
-  const { start_time } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO sessions (start_time) VALUES ($1) RETURNING session_id',
-      [start_time]
-    );
-    res.json({ session_id: result.rows[0].session_id });
-  } catch (err) {
-    console.error("Error creating session:", err);
-    res.status(500).json({ error: 'Failed to create session' });
-  }
-});
+
 
 // --- API: End Session ---
 app.post('/api/sessions/:id/end', async (req, res) => {
