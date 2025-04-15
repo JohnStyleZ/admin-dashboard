@@ -506,6 +506,25 @@ app.post('/api/device-check', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+// --- API: Update device_id based on participant_id ---
+app.post('/api/update-device-id', async (req, res) => {
+  const { participant_id, device_id } = req.body;
+
+  if (!participant_id || !device_id) {
+    return res.status(400).json({ error: 'Missing participant_id or device_id' });
+  }
+
+  try {
+    await pool.query(
+      'UPDATE participants SET device_id = $1 WHERE participant_id = $2',
+      [device_id, participant_id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error updating device_id:", err);
+    res.status(500).json({ error: 'Failed to update device_id' });
+  }
+});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
