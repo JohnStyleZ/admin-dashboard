@@ -535,8 +535,10 @@ app.post('/api/sessions', async (req, res) => {
 
 
 app.get('/api/sessions/active', async (req, res) => {
+  const { location_id } = req.query;
+
   try {
-    const result = await pool.query(`
+    let query = `
       SELECT 
         s.session_id, 
         s.start_time, 
@@ -547,15 +549,27 @@ app.get('/api/sessions/active', async (req, res) => {
       JOIN locations l ON s.location_id = l.location_id
       LEFT JOIN participant_sessions ps ON s.session_id = ps.session_id
       WHERE s.end_time IS NULL
+    `;
+    const params = [];
+
+    if (location_id) {
+      query += ` AND s.location_id = $1`;
+      params.push(location_id);
+    }
+
+    query += `
       GROUP BY s.session_id, s.start_time, s.location_id, l.name
       ORDER BY s.start_time DESC
-    `);
+    `;
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching active sessions:", err);
     res.status(500).json({ error: 'Failed to fetch active sessions' });
   }
 });
+
 
 
 app.get('/api/locations', async (req, res) => {
