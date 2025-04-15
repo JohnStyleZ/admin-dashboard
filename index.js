@@ -380,18 +380,29 @@ app.post('/api/participants/check-in', async (req, res) => {
 // --- API: Log participant session ---
 app.post('/api/participant-sessions', async (req, res) => {
   const { participant_id, session_id, join_time, leave_time } = req.body;
+
   try {
-    await pool.query(
-      `INSERT INTO participant_sessions (participant_id, session_id, join_time, leave_time)
-       VALUES ($1, $2, $3, $4)`,
-      [participant_id, session_id, join_time, leave_time]
-    );
+    if (leave_time) {
+      await pool.query(
+        `UPDATE participant_sessions
+         SET leave_time = $1
+         WHERE participant_id = $2 AND session_id = $3`,
+        [leave_time, participant_id, session_id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO participant_sessions (participant_id, session_id, join_time, leave_time)
+         VALUES ($1, $2, $3, $4)`,
+        [participant_id, session_id, join_time, leave_time]
+      );
+    }
     res.json({ success: true });
   } catch (err) {
     console.error("Error logging participant session:", err);
     res.status(500).json({ error: 'Failed to log participant session' });
   }
 });
+
 //--- API: get participant ---
 app.get('/api/participants', async (req, res) => {
   try {
