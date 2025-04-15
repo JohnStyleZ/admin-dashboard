@@ -529,11 +529,6 @@ app.post('/api/update-device-id', async (req, res) => {
 
 app.post('/api/sessions', async (req, res) => {
   const { start_time, participant_id, location_id } = req.body;
-
-  if (!start_time || !participant_id || !location_id) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
   try {
     const result = await pool.query(
       `INSERT INTO sessions (start_time, started_by, location_id)
@@ -543,10 +538,11 @@ app.post('/api/sessions', async (req, res) => {
     );
     res.json({ session_id: result.rows[0].session_id });
   } catch (err) {
-    console.error("Error creating session:", err);
-    res.status(500).json({ error: 'Failed to create session' });
+    console.error("Error starting session:", err);
+    res.status(500).json({ error: 'Failed to start session' });
   }
 });
+
 
 app.get('/api/sessions/active', async (req, res) => {
   try {
