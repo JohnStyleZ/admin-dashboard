@@ -467,6 +467,46 @@ app.get('/api/summary', async (req, res) => {
   }
 });
 
+//--- check deviceid -------//
+app.post('/api/device-check', async (req, res) => {
+  const { device_id, name, gender } = req.body;
+
+  try {
+    if (name) {
+      const existing = await pool.query('SELECT * FROM participants WHERE device_id = $1', [device_id]);
+      if (existing.rows.length === 0) {
+        const result = await pool.query(
+          'INSERT INTO participants (name, device_id, gender) VALUES ($1, $2, $3) RETURNING participant_id',
+          [name, device_id, gender]
+        );
+        return res.json({ status: 'created', participant_id: result.rows[0].participant_id, name, gender });
+      } else {
+        return res.json({
+          status: 'exists',
+          participant_id: existing.rows[0].participant_id,
+          name: existing.rows[0].name,
+          gender: existing.rows[0].gender
+        });
+      }
+    } else {
+      const result = await pool.query('SELECT * FROM participants WHERE device_id = $1', [device_id]);
+      if (result.rows.length > 0) {
+        return res.json({
+          status: 'found',
+          participant_id: result.rows[0].participant_id,
+          name: result.rows[0].name,
+          gender: result.rows[0].gender
+        });
+      } else {
+        return res.status(404).json({ error: 'Device not found' });
+      }
+    }
+  } catch (err) {
+    console.error("Error with device-check:", err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
