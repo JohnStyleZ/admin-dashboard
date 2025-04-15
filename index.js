@@ -525,6 +525,28 @@ app.post('/api/update-device-id', async (req, res) => {
     res.status(500).json({ error: 'Failed to update device_id' });
   }
 });
+//  Add `started_by` when creating a session
+
+app.post('/api/sessions', async (req, res) => {
+  const { start_time, participant_id, location_id } = req.body;
+
+  if (!start_time || !participant_id || !location_id) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO sessions (start_time, started_by, location_id)
+       VALUES ($1, $2, $3)
+       RETURNING session_id`,
+      [start_time, participant_id, location_id]
+    );
+    res.json({ session_id: result.rows[0].session_id });
+  } catch (err) {
+    console.error("Error creating session:", err);
+    res.status(500).json({ error: 'Failed to create session' });
+  }
+});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
