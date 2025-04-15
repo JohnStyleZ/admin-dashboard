@@ -547,6 +547,24 @@ app.post('/api/sessions', async (req, res) => {
     res.status(500).json({ error: 'Failed to create session' });
   }
 });
+app.get('/api/sessions/active', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT s.session_id, s.start_time, s.location_id, l.name AS location_name,
+             COUNT(ps.participant_id) AS participant_count
+      FROM sessions s
+      JOIN locations l ON s.location_id = l.location_id
+      LEFT JOIN participant_sessions ps ON s.session_id = ps.session_id
+      WHERE s.end_time IS NULL
+      GROUP BY s.session_id, s.start_time, s.location_id, l.name
+      ORDER BY s.start_time DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching active sessions:", err);
+    res.status(500).json({ error: 'Failed to fetch active sessions' });
+  }
+});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
