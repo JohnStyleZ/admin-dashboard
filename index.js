@@ -565,15 +565,17 @@ app.get('/api/sessions/active', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch active sessions' });
   }
 });
+
 app.get('/api/locations', async (req, res) => {
   try {
-    const result = await db.query('SELECT location_id, name FROM locations');
+    const result = await db.query('SELECT location_id, name FROM locations ORDER BY name');
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching locations:', err);
     res.status(500).json({ error: 'Failed to fetch locations' });
   }
 });
+
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
