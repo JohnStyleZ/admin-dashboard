@@ -528,6 +528,8 @@ app.post('/api/update-device-id', async (req, res) => {
 //  Add `started_by` when creating a session
 
 app.post('/api/sessions', async (req, res) => {
+  console.log('Received:', { start_time, participant_id, location_id });
+
   const { start_time, participant_id, location_id } = req.body;
   try {
     const result = await pool.query(
