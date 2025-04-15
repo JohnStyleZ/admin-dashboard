@@ -344,18 +344,6 @@ app.post('/admin/settings/update-participants', requireAdmin, async (req, res) =
 app.use(express.json()); 
 
 
-// --- API: End Session ---
-app.post('/api/sessions/:id/end', async (req, res) => {
-  const sessionId = req.params.id;
-  const { end_time } = req.body;
-  try {
-    await pool.query('UPDATE sessions SET end_time = $1 WHERE session_id = $2', [end_time, sessionId]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Error ending session:", err);
-    res.status(500).json({ error: 'Failed to end session' });
-  }
-});
 
 // --- API: Create or Get Participant by Name ---
 app.post('/api/participants/check-in', async (req, res) => {
