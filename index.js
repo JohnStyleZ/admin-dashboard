@@ -598,19 +598,24 @@ app.post('/api/sessions/:id/end', async (req, res) => {
   const { end_time } = req.body;
 
   try {
-    // Update the session's end_time
+    console.log(`Ending session ${sessionId} at ${end_time}`);
+
+    // Step 1: End the session
     await pool.query(
       'UPDATE sessions SET end_time = $1 WHERE session_id = $2',
       [end_time, sessionId]
     );
 
-    // Update leave_time for participants who haven't left yet
-    await pool.query(
+    // Step 2: Fill in leave_time for any participant still in session
+    const result = await pool.query(
       `UPDATE participant_sessions
        SET leave_time = $1
-       WHERE session_id = $2 AND leave_time IS NULL`,
+       WHERE session_id = $2 AND leave_time IS NULL
+       RETURNING participant_id`,
       [end_time, sessionId]
     );
+
+    console.log(`Updated leave_time for participants:`, result.rows.map(r => r.participant_id));
 
     res.json({ success: true });
   } catch (err) {
