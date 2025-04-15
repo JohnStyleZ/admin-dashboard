@@ -582,6 +582,32 @@ app.get('/api/locations', async (req, res) => {
   }
 });
 
+app.post('/api/sessions/:id/end', async (req, res) => {
+  const sessionId = req.params.id;
+  const { end_time } = req.body;
+
+  try {
+    // 1. Set end_time on the session
+    await pool.query(
+      'UPDATE sessions SET end_time = $1 WHERE session_id = $2',
+      [end_time, sessionId]
+    );
+
+    // 2. Update all participant_sessions where leave_time is NULL
+    await pool.query(
+      `UPDATE participant_sessions 
+       SET leave_time = $1 
+       WHERE session_id = $2 AND leave_time IS NULL`,
+      [end_time, sessionId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error ending session:", err);
+    res.status(500).json({ error: 'Failed to end session' });
+  }
+});
+
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
