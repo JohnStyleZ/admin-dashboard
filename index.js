@@ -405,6 +405,16 @@ app.post('/api/participant-sessions', async (req, res) => {
     res.status(500).json({ error: 'Failed to log participant session' });
   }
 });
+//--- API: get participant ---
+app.get('/api/participants', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM participants');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching participants:", err);
+    res.status(500).json({ error: 'Failed to fetch participants' });
+  }
+});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
