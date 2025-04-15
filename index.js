@@ -415,6 +415,57 @@ app.get('/api/participants', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch participants' });
   }
 });
+app.get('/api/sessions', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM sessions');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching sessions:", err);
+    res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+app.get('/api/participant-sessions', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM participant_sessions');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching participant sessions:", err);
+    res.status(500).json({ error: 'Failed to fetch participant sessions' });
+  }
+});
+app.get('/api/participant-sessions/:participant_id', async (req, res) => {
+  const { participant_id } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM participant_sessions WHERE participant_id = $1',
+      [participant_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching data for participant:", err);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+app.get('/api/summary', async (req, res) => {
+  try {
+    const totalParticipants = await pool.query('SELECT COUNT(*) FROM participants');
+    const maleCount = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Male'");
+    const femaleCount = await pool.query("SELECT COUNT(*) FROM participants WHERE gender = 'Female'");
+    const totalSpent = await pool.query('SELECT SUM(adjusted_cost) FROM participant_sessions');
+    const avgCost = await pool.query('SELECT AVG(adjusted_cost) FROM participant_sessions');
+
+    res.json({
+      totalParticipants: Number(totalParticipants.rows[0].count),
+      maleCount: Number(maleCount.rows[0].count),
+      femaleCount: Number(femaleCount.rows[0].count),
+      totalSpent: parseFloat(totalSpent.rows[0].sum || 0),
+      avgCost: parseFloat(avgCost.rows[0].avg || 0)
+    });
+  } catch (err) {
+    console.error("Error fetching summary:", err);
+    res.status(500).json({ error: 'Failed to fetch summary' });
+  }
+});
 
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
