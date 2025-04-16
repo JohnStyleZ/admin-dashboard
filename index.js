@@ -707,13 +707,18 @@ app.post('/api/sessions/:id/adjust-costs', async (req, res) => {
     await client.query('BEGIN');
 
     for (const { participant_id, adjusted_cost } of costs) {
-      await client.query(
+      console.log(`Updating: participant_id=${participant_id}, session_id=${sessionId}, cost=${adjusted_cost}`);
+    
+      const result = await client.query(
         `UPDATE participant_sessions 
          SET adjusted_cost = $1 
          WHERE session_id = $2 AND participant_id = $3`,
         [adjusted_cost, sessionId, participant_id]
       );
+    
+      console.log(`Rows affected: ${result.rowCount}`);
     }
+
 
     await client.query('COMMIT');
     res.json({ success: true });
