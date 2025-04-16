@@ -617,7 +617,7 @@ app.get('/api/sessions/:id/participants', async (req, res) => {
   const sessionId = req.params.id;
 
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT 
         ps.participant_id,
         ps.join_time,
