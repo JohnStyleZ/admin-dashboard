@@ -423,7 +423,12 @@ app.get('/api/participant-sessions/:participant_id', async (req, res) => {
   const { participant_id } = req.params;
   try {
     const result = await pool.query(
-      'SELECT * FROM participant_sessions WHERE participant_id = $1',
+      `SELECT ps.*, s.location_id, l.name AS location_name
+       FROM participant_sessions ps
+       JOIN sessions s ON ps.session_id = s.session_id
+       JOIN locations l ON s.location_id = l.location_id
+       WHERE ps.participant_id = $1
+       ORDER BY ps.join_time DESC`,
       [participant_id]
     );
     res.json(result.rows);
@@ -432,6 +437,7 @@ app.get('/api/participant-sessions/:participant_id', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
+
 app.get('/api/summary', async (req, res) => {
   try {
     const totalParticipants = await pool.query('SELECT COUNT(*) FROM participants');
