@@ -615,19 +615,26 @@ app.post('/api/sessions/:id/end', async (req, res) => {
 // GET participants in a specific session
 app.get('/api/sessions/:id/participants', async (req, res) => {
   const sessionId = req.params.id;
+
   try {
-    const result = await pool.query(`
-      SELECT p.name, p.gender, ps.join_time, s.started_by
+    const result = await db.query(`
+      SELECT 
+        ps.participant_id,
+        ps.join_time,
+        ps.leave_time,
+        ps.computed_cost,
+        ps.adjusted_cost,
+        p.name,
+        p.gender
       FROM participant_sessions ps
       JOIN participants p ON ps.participant_id = p.participant_id
-      JOIN sessions s ON ps.session_id = s.session_id
-      WHERE ps.session_id = $1 AND ps.leave_time IS NULL
+      WHERE ps.session_id = $1
     `, [sessionId]);
 
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching participants:', err);
-    res.status(500).json({ error: 'Failed to fetch participants' });
+    console.error("Error fetching participants:", err);
+    res.status(500).json({ error: "Failed to fetch participants" });
   }
 });
 
