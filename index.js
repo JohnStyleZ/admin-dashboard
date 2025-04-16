@@ -641,24 +641,22 @@ app.get('/api/sessions/:id/participants', async (req, res) => {
 // --- API: Get session started by user with unpaid status ---
 app.get('/api/sessions/unpaid-host/:participant_id', async (req, res) => {
   const { participant_id } = req.params;
-
   try {
     const result = await pool.query(`
-      SELECT *
-      FROM sessions
-      WHERE started_by = $1 AND total_actual_paid IS NULL
-      ORDER BY start_time DESC
+      SELECT 
+        s.*, 
+        l.name AS location_name
+      FROM sessions s
+      JOIN locations l ON s.location_id = l.location_id
+      WHERE s.started_by = $1 AND s.total_actual_paid IS NULL
+      ORDER BY s.start_time DESC
       LIMIT 1
     `, [participant_id]);
 
-    if (result.rows.length > 0) {
-      res.json(result.rows[0]);
-    } else {
-      res.status(404).json({ message: 'No unpaid session found.' });
-    }
+    res.json(result.rows[0]);
   } catch (err) {
     console.error("Error fetching unpaid session:", err);
-    res.status(500).json({ error: 'Failed to fetch unpaid session' });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
