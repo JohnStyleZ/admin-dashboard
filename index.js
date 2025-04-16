@@ -662,6 +662,25 @@ app.get('/api/sessions/unpaid-host/:participant_id', async (req, res) => {
   }
 });
 
+app.get('/api/sessions/:id', async (req, res) => {
+  const sessionId = req.params.id;
+  try {
+    const result = await pool.query(`
+      SELECT 
+        s.*, 
+        l.name AS location_name
+      FROM sessions s
+      LEFT JOIN locations l ON s.location_id = l.location_id
+      WHERE s.session_id = $1
+    `, [sessionId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching session with location:", err);
+    res.status(500).json({ error: "Failed to fetch session info" });
+  }
+});
+
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
