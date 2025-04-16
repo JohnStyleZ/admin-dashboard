@@ -679,6 +679,53 @@ app.get('/api/sessions/:id', async (req, res) => {
   }
 });
 
+app.post('/api/sessions/:id/paid', async (req, res) => {
+  const sessionId = req.params.id;
+  const { total_actual_paid } = req.body;
+
+  try {
+    const result = await pool.query(
+      'UPDATE sessions SET total_actual_paid = $1 WHERE session_id = $2 AND end_time IS NOT NULL RETURNING *',
+      [total_actual_paid, sessionId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Session not ended or invalid ID' });
+    }
+    res.json({ success: true, session: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating total_actual_paid:', err);
+    res.status(500).json({ error: 'Failed to update total actual paid' });
+  }
+});
+
+app.post('/api/sessions/:id/adjust-costs', async (req, res) => {
+  const sessionId = req.params.id;
+  const { costs } = req.body; // Array of { participant_id, adjusted_cost }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const { participant_id, adjusted_cost } of costs) {
+      await client.query(
+        `UPDATE participant_sessions 
+         SET adjusted_cost = $1 
+         WHERE session_id = $2 AND participant_id = $3`,
+        [adjusted_cost, sessionId, participant_id]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating participant costs:', err);
+    res.status(500).json({ error: 'Failed to update participant costs' });
+  } finally {
+    client.release();
+  }
+});
+
 // --- Logout ---
 app.get('/admin/logout', requireAdmin, (req, res) => {
   req.session.destroy(err => {
