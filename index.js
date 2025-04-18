@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
@@ -464,40 +465,34 @@ app.post('/api/device-check', async (req, res) => {
   const { device_id, name, gender } = req.body;
 
   try {
-    if (name) {
-      const existing = await pool.query('SELECT * FROM participants WHERE device_id = $1', [device_id]);
-      if (existing.rows.length === 0) {
-        const result = await pool.query(
-          'INSERT INTO participants (name, device_id, gender) VALUES ($1, $2, $3) RETURNING participant_id',
-          [name, device_id, gender]
-        );
-        return res.json({ status: 'created', participant_id: result.rows[0].participant_id, name, gender });
-      } else {
-        return res.json({
-          status: 'exists',
-          participant_id: existing.rows[0].participant_id,
-          name: existing.rows[0].name,
-          gender: existing.rows[0].gender
-        });
-      }
-    } else {
-      const result = await pool.query('SELECT * FROM participants WHERE device_id = $1', [device_id]);
-      if (result.rows.length > 0) {
-        return res.json({
-          status: 'found',
-          participant_id: result.rows[0].participant_id,
-          name: result.rows[0].name,
-          gender: result.rows[0].gender
-        });
-      } else {
-        return res.status(404).json({ error: 'Device not found' });
-      }
+    // If name and gender provided, this is a new user registration
+    if (name && gender && device_id) {
+      const createRes = await pool.query(
+        `INSERT INTO participants (name, gender, device_id)
+         VALUES ($1, $2, $3)
+         RETURNING participant_id, name, gender`,
+        [name, gender, device_id]
+      );
+      return res.json(createRes.rows[0]);
     }
+
+    // Check if device ID exists
+    const result = await pool.query(
+      'SELECT participant_id, name, gender, email FROM participants WHERE device_id = $1',
+      [device_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error("Error with device-check:", err);
+    console.error('Device check error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 // --- API: Update device_id based on participant_id ---
 app.post('/api/update-device-id', async (req, res) => {
   const { participant_id, device_id } = req.body;
@@ -517,6 +512,7 @@ app.post('/api/update-device-id', async (req, res) => {
     res.status(500).json({ error: 'Failed to update device_id' });
   }
 });
+
 //  Add `started_by` when creating a session
 
 app.post('/api/sessions', async (req, res) => {
@@ -799,4 +795,212 @@ initializeDatabase().then(() => {
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
+});
+
+// --- Authentication API Endpoints ---
+
+// Register new user with email/password
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, name, gender, security_question, security_answer, device_id } = req.body;
+
+  if (!email || !password || !name || !gender || !security_question || !security_answer) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  try {
+    // Check if email already exists
+    const emailCheck = await pool.query('SELECT * FROM participants WHERE email = $1', [email]);
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    // Hash password and security answer
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Generate a unique device ID if not provided
+    const finalDeviceId = device_id || `device_${Date.now()}`;
+
+    // Insert new user
+    const result = await pool.query(
+      `INSERT INTO participants (name, gender, email, password, security_question, security_answer, device_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING participant_id, name, gender, email, device_id`,
+      [name, gender, email, hashedPassword, security_question, security_answer, finalDeviceId]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Login with email/password
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+
+  try {
+    // Find user by email
+    const result = await pool.query('SELECT * FROM participants WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Return user data
+    res.json({
+      participant_id: user.participant_id,
+      name: user.name,
+      gender: user.gender,
+      email: user.email,
+      device_id: user.device_id
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get security question for reset
+app.post('/api/auth/get-security-question', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required' });
+  }
+
+  try {
+    // Find user by email
+    const result = await pool.query('SELECT security_question FROM participants WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      // For security, use a random delay and don't reveal if email doesn't exist
+      setTimeout(() => {
+        return res.status(404).json({ message: 'User not found' });
+      }, 500 + Math.random() * 500);
+      return;
+    }
+
+    const questionId = result.rows[0].security_question;
+    
+    // Map question IDs to actual question text
+    const questionMap = {
+      'pet': 'What was your first pet\'s name?',
+      'street': 'What street did you grow up on?',
+      'mother': 'What is your mother\'s maiden name?',
+      'school': 'What elementary school did you attend?',
+      'birth': 'In what city were you born?'
+    };
+
+    res.json({
+      questionId,
+      questionText: questionMap[questionId] || 'Security question'
+    });
+  } catch (err) {
+    console.error('Error fetching security question:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Verify security answer
+app.post('/api/auth/verify-security-answer', async (req, res) => {
+  const { email, question_id, answer } = req.body;
+
+  if (!email || !question_id || !answer) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  try {
+    // Find user by email
+    const result = await pool.query(
+      'SELECT participant_id, security_question, security_answer FROM participants WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    
+    // Verify question and answer
+    if (question_id !== user.security_question || 
+        answer.toLowerCase().trim() !== user.security_answer.toLowerCase().trim()) {
+      return res.status(401).json({ message: 'Invalid answer' });
+    }
+
+    // Generate a reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiryTime = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    
+    // Store the token in the database
+    await pool.query(
+      `UPDATE participants 
+       SET reset_token = $1, reset_token_expires = $2 
+       WHERE participant_id = $3`,
+      [resetToken, expiryTime, user.participant_id]
+    );
+
+    res.json({ resetToken });
+  } catch (err) {
+    console.error('Error verifying security answer:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reset password
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Token and password are required' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    // Find user by reset token
+    const result = await pool.query(
+      `SELECT participant_id FROM participants 
+       WHERE reset_token = $1 AND reset_token_expires > NOW()`,
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    const userId = result.rows[0].participant_id;
+    
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Update password and clear reset token
+    await pool.query(
+      `UPDATE participants 
+       SET password = $1, reset_token = NULL, reset_token_expires = NULL 
+       WHERE participant_id = $2`,
+      [hashedPassword, userId]
+    );
+
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (err) {
+    console.error('Error resetting password:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
