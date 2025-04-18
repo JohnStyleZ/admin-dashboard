@@ -1004,3 +1004,26 @@ app.post('/api/auth/reset-password', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Transfer host status to another participant
+app.post('/api/sessions/:sessionId/transfer-host', async (req, res) => {
+  const { sessionId } = req.params;
+  const { new_host_id } = req.body;
+  
+  if (!sessionId || !new_host_id) {
+    return res.status(400).json({ message: 'Missing required parameters' });
+  }
+  
+  try {
+    // Update the session's started_by field to the new host
+    await pool.query(
+      'UPDATE sessions SET started_by = $1 WHERE session_id = $2',
+      [new_host_id, sessionId]
+    );
+    
+    res.json({ message: 'Host transferred successfully' });
+  } catch (err) {
+    console.error('Error transferring host:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
