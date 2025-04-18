@@ -520,15 +520,15 @@ app.post('/api/update-device-id', async (req, res) => {
 //  Add `started_by` when creating a session
 
 app.post('/api/sessions', async (req, res) => {
-  const { start_time, participant_id, location_id } = req.body;
-  console.log('Received:', { start_time, participant_id, location_id }); // ✅ Now these are defined
+  const { start_time, participant_id, location_id, room_number } = req.body;
+  console.log('Received:', { start_time, participant_id, location_id, room_number });
 
   try {
     const result = await pool.query(
-      `INSERT INTO sessions (start_time, started_by, location_id)
-       VALUES ($1, $2, $3)
+      `INSERT INTO sessions (start_time, started_by, location_id, room_number)
+       VALUES ($1, $2, $3, $4)
        RETURNING session_id`,
-      [start_time, participant_id, location_id]
+      [start_time, participant_id, location_id, room_number]
     );
     res.json({ session_id: result.rows[0].session_id });
   } catch (err) {
@@ -547,11 +547,15 @@ app.get('/api/sessions/active', async (req, res) => {
       SELECT 
         s.session_id, 
         s.start_time, 
-        s.location_id, 
+        s.location_id,
+        s.room_number,
+        s.started_by,
+        p.name AS started_by_name,
         l.name AS location_name,
         COUNT(ps.participant_id) AS participant_count
       FROM sessions s
       JOIN locations l ON s.location_id = l.location_id
+      LEFT JOIN participants p ON s.started_by = p.participant_id
       LEFT JOIN participant_sessions ps ON s.session_id = ps.session_id
       WHERE s.end_time IS NULL
     `;
@@ -563,7 +567,7 @@ app.get('/api/sessions/active', async (req, res) => {
     }
 
     query += `
-      GROUP BY s.session_id, s.start_time, s.location_id, l.name
+      GROUP BY s.session_id, s.start_time, s.location_id, s.room_number, s.started_by, p.name, l.name
       ORDER BY s.start_time DESC
     `;
 
@@ -651,9 +655,11 @@ app.get('/api/sessions/unpaid-host/:participant_id', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         s.*, 
-        l.name AS location_name
+        l.name AS location_name,
+        p.name AS started_by_name
       FROM sessions s
       JOIN locations l ON s.location_id = l.location_id
+      JOIN participants p ON s.started_by = p.participant_id
       WHERE s.started_by = $1 AND s.total_actual_paid IS NULL
       ORDER BY s.start_time DESC
       LIMIT 1
@@ -672,9 +678,11 @@ app.get('/api/sessions/:id', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         s.*, 
-        l.name AS location_name
+        l.name AS location_name,
+        p.name AS started_by_name
       FROM sessions s
       LEFT JOIN locations l ON s.location_id = l.location_id
+      LEFT JOIN participants p ON s.started_by = p.participant_id
       WHERE s.session_id = $1
     `, [sessionId]);
 
@@ -749,7 +757,46 @@ app.get('/', (req, res) => {
   res.redirect('/admin/login');
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Database initialization and migrations
+async function initializeDatabase() {
+  const client = await pool.connect();
+  try {
+    // Check if room_number column exists in sessions table
+    const columnCheckResult = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'sessions' AND column_name = 'room_number'
+    `);
+    
+    const hasRoomNumber = columnCheckResult.rows.length > 0;
+    
+    // Start transaction for migrations
+    await client.query('BEGIN');
+    
+    // Add room_number column if it doesn't exist
+    if (!hasRoomNumber) {
+      console.log('Adding room_number column to sessions table');
+      await client.query(`
+        ALTER TABLE sessions
+        ADD COLUMN room_number TEXT
+      `);
+    }
+    
+    await client.query('COMMIT');
+    console.log('Database migrations completed successfully');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error performing database migrations:', err);
+  } finally {
+    client.release();
+  }
+}
+
+// Run migrations before starting server
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
 });
