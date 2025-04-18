@@ -579,7 +579,7 @@ app.get('/api/sessions/active', async (req, res) => {
 
 app.get('/api/locations', async (req, res) => {
   try {
-    const result = await pool.query('SELECT location_id, name FROM locations ORDER BY name');
+    const result = await pool.query('SELECT location_id, name FROM locations');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching locations:', err);
