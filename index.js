@@ -135,6 +135,35 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
 // --- Analytics ---
 app.get('/admin/analytics', requireAdmin, async (req, res) => {
   try {
+    // Get total session count
+    const totalSessionsRes = await pool.query('SELECT COUNT(*) as count FROM sessions');
+    const totalSessionsCount = parseInt(totalSessionsRes.rows[0].count);
+    
+    // Get average cost per session
+    const avgCostPerSessionRes = await pool.query(`
+      SELECT AVG(total_cost) as avg_cost FROM (
+        SELECT session_id, SUM(adjusted_cost) as total_cost 
+        FROM participant_sessions 
+        GROUP BY session_id
+      ) as session_costs
+    `);
+    const avgCostPerSession = parseFloat(avgCostPerSessionRes.rows[0].avg_cost) || 0;
+    
+    // Get average duration
+    const avgDurationRes = await pool.query(`
+      SELECT AVG(EXTRACT(EPOCH FROM (leave_time - join_time))/3600) as avg_hours
+      FROM participant_sessions
+      WHERE leave_time IS NOT NULL
+    `);
+    const avgDuration = parseFloat(avgDurationRes.rows[0].avg_hours || 0).toFixed(1);
+    
+    // Get average cost per person
+    const avgCostPerPersonRes = await pool.query(`
+      SELECT AVG(adjusted_cost) as avg_cost
+      FROM participant_sessions
+    `);
+    const avgCostPerPerson = parseFloat(avgCostPerPersonRes.rows[0].avg_cost) || 0;
+
     const peakHours = await pool.query(`
       SELECT EXTRACT(HOUR FROM join_time) AS hour, COUNT(*) AS total
       FROM participant_sessions
@@ -190,6 +219,10 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
     res.render('analytics', {
       admin: req.session.admin,
       title: 'Analytics',
+      totalSessionsCount,
+      avgCostPerSession,
+      avgDuration,
+      avgCostPerPerson,
       peakHours: peakHours.rows,
       durationBuckets: durationBuckets.rows,
       groupSizes: groupSizes.rows,
