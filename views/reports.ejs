@@ -5,29 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Reports</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #f7f9fc; 
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar { 
+      width: 250px; 
+      height: 100vh; 
+      background-color: #343a40; 
+      position: fixed; 
+      color: #fff; 
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
     .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
     .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
-    .main { margin-left: 250px; padding: 30px; }
-    .card { border: none; border-radius: 10px; }
+    .sidebar a i { margin-right: 10px; }
+    .main { 
+      margin-left: 250px; 
+      padding: 30px; 
+      transition: margin-left 0.3s ease;
+      width: calc(100% - 250px);
+    }
+    .card { 
+      border: none; 
+      border-radius: 10px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    
+    /* Mobile navbar */
+    .mobile-nav {
+      display: none;
+      background-color: #343a40;
+      padding: 10px 15px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 101;
+    }
+    .mobile-nav-title {
+      color: white;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+    }
+    .mobile-nav-title i {
+      margin-right: 10px;
+    }
+    .menu-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    /* Responsive styles */
+    @media (max-width: 991.98px) {
+      .mobile-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .sidebar {
+        transform: translateX(-100%);
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 70px 15px 15px 15px;
+      }
+      /* Adjust header for mobile */
+      .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+      .d-flex.justify-content-between.align-items-center > div {
+        margin-top: 15px;
+        width: 100%;
+      }
+    }
+    
+    @media (max-width: 575.98px) {
+      .card {
+        padding: 15px !important;
+      }
+      h2 {
+        font-size: 1.5rem;
+      }
+      #reportMonth {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .btn-outline-secondary {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-<div class="sidebar">
-  <h2>Admin Panel</h2>
-  <a href="/admin/dashboard">Dashboard</a>
-  <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
-  <a href="/admin/reports" class="<%= title === 'Reports' ? 'active' : '' %>">Reports</a>
-  <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
-  <a href="/admin/logout">Logout</a>
+
+<!-- Mobile Navigation Bar -->
+<div class="mobile-nav">
+  <button class="menu-toggle" id="sidebarToggle">
+    <i class="bi bi-list"></i>
+  </button>
+  <div class="mobile-nav-title">
+    <i class="bi bi-music-note-beamed"></i>
+    K-Cal Admin
+  </div>
+  <div style="width: 24px;">
+    <!-- Placeholder to center the title -->
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <h2><i class="bi bi-speedometer2"></i> Admin Panel</h2>
+  <a href="/admin/dashboard"><i class="bi bi-house-door"></i> Dashboard</a>
+  <a href="/admin/analytics"><i class="bi bi-bar-chart"></i> Analytics</a>
+  <a href="/admin/reports" class="active"><i class="bi bi-file-text"></i> Reports</a>
+  <a href="/admin/settings"><i class="bi bi-gear"></i> Settings</a>
+  <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
 <div class="main">
-  <h2 class="mb-4">📄 Reports</h2>
+  <h2 class="mb-4"><i class="bi bi-file-text"></i> Reports</h2>
   <div class="card p-3 shadow-sm">
     <div class="d-flex justify-content-between align-items-center">
       <label>Filter by Month:
@@ -42,5 +157,37 @@
     <p>💡 Sample session data will appear here...</p>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Sidebar toggle functionality for mobile
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    sidebarToggle.addEventListener('click', function() {
+      sidebar.classList.toggle('active');
+    });
+    
+    // Close sidebar when clicking on a link (for mobile)
+    const sidebarLinks = document.querySelectorAll('.sidebar a');
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth < 992) {
+          sidebar.classList.remove('active');
+        }
+      });
+    });
+    
+    // Close sidebar when clicking outside (for mobile)
+    document.addEventListener('click', function(event) {
+      if (window.innerWidth < 992) {
+        if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+          sidebar.classList.remove('active');
+        }
+      }
+    });
+  });
+</script>
 </body>
 </html>

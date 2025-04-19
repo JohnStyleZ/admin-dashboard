@@ -7,13 +7,32 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; z-index: 100; }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #f7f9fc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar { 
+      width: 250px; 
+      height: 100vh; 
+      background-color: #343a40; 
+      position: fixed; 
+      color: #fff; 
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
     .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
     .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
     .sidebar a i { margin-right: 10px; }
-    .main { margin-left: 250px; padding: 30px; }
+    .main { 
+      margin-left: 250px; 
+      padding: 30px;
+      transition: margin-left 0.3s ease;
+      width: calc(100% - 250px);
+    }
     .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
     .nav-tabs .nav-link { color: #495057; border-radius: 8px 8px 0 0; padding: 10px 20px; }
     .nav-tabs .nav-link.active { background-color: #fff; font-weight: bold; }
@@ -23,10 +42,123 @@
     .table-responsive { overflow-x: auto; }
     .action-buttons .btn { margin-right: 5px; }
     .pagination { margin-bottom: 0; }
+
+    /* Mobile navbar */
+    .mobile-nav {
+      display: none;
+      background-color: #343a40;
+      padding: 10px 15px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 101;
+    }
+    .mobile-nav-title {
+      color: white;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+    }
+    .mobile-nav-title i {
+      margin-right: 10px;
+    }
+    .menu-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    /* Responsive styles */
+    @media (max-width: 991.98px) {
+      .mobile-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .sidebar {
+        transform: translateX(-100%);
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 70px 15px 15px 15px;
+      }
+      .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+      .d-flex.justify-content-between.align-items-center > div {
+        margin-top: 15px;
+        width: 100%;
+      }
+      .search-box {
+        max-width: 100%;
+        width: 100%;
+      }
+      .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .nav-tabs .nav-link {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+    }
+    
+    @media (max-width: 575.98px) {
+      .card {
+        padding: 15px !important;
+      }
+      h2 {
+        font-size: 1.5rem;
+      }
+      .row.g-4 {
+        --bs-gutter-y: 1rem;
+      }
+      .nav-tabs .nav-link {
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      .nav-tabs .nav-link i {
+        margin-right: 4px;
+      }
+      .tab-content {
+        padding: 15px 10px;
+      }
+      .table-responsive {
+        font-size: 14px;
+      }
+      .action-buttons .btn {
+        padding: 2px 5px;
+        font-size: 12px;
+      }
+    }
   </style>
 </head>
 <body>
-<div class="sidebar">
+
+<!-- Mobile Navigation Bar -->
+<div class="mobile-nav">
+  <button class="menu-toggle" id="sidebarToggle">
+    <i class="bi bi-list"></i>
+  </button>
+  <div class="mobile-nav-title">
+    <i class="bi bi-music-note-beamed"></i>
+    K-Cal Admin
+  </div>
+  <div style="width: 24px;">
+    <!-- Placeholder to center the title -->
+  </div>
+</div>
+
+<div class="sidebar" id="sidebar">
   <h2><i class="bi bi-speedometer2"></i> Admin Panel</h2>
   <a href="/admin/dashboard"><i class="bi bi-house-door"></i> Dashboard</a>
   <a href="/admin/analytics"><i class="bi bi-bar-chart"></i> Analytics</a>
@@ -836,56 +968,21 @@
   <% }); %>
 <% } %>
 
-<!-- Connect Quick Action Buttons -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // Auto-dismiss alerts after 4 seconds
-  setTimeout(() => {
-    const alert = document.querySelector('.alert');
-    if (alert) {
-      alert.classList.remove('show');
-      alert.classList.add('fade');
-      setTimeout(() => alert.remove(), 500);
-    }
-  }, 4000);
-
-  // Enable tab navigation via URL
   document.addEventListener('DOMContentLoaded', function() {
-    // Get tab from URL or activate first tab
+    // Set up active tab based on URL parameter
     const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
-    
-    if (tabParam) {
-      const tabToActivate = document.querySelector(`#${tabParam}-tab`);
-      if (tabToActivate) {
-        new bootstrap.Tab(tabToActivate).show();
+    const tab = urlParams.get('tab');
+    if (tab) {
+      const tabElement = document.querySelector(`#${tab}-tab`);
+      if (tabElement) {
+        const tabTrigger = new bootstrap.Tab(tabElement);
+        tabTrigger.show();
       }
     }
     
-    // Check for stored modal to open (from dashboard)
-    const modalToOpen = sessionStorage.getItem('openModal');
-    if (modalToOpen) {
-      setTimeout(() => {
-        const modal = new bootstrap.Modal(document.getElementById(modalToOpen));
-        if (modal) {
-          modal.show();
-        }
-        sessionStorage.removeItem('openModal');
-      }, 500);
-    }
-    
-    // Update URL when tab changes
-    const tabLinks = document.querySelectorAll('[data-bs-toggle="tab"]');
-    tabLinks.forEach(tabLink => {
-      tabLink.addEventListener('shown.bs.tab', function (event) {
-        const tabId = event.target.id.replace('-tab', '');
-        const newUrl = new URL(window.location);
-        newUrl.searchParams.set('tab', tabId);
-        history.pushState({}, '', newUrl);
-      });
-    });
-    
-    // Settings search functionality
+    // Search functionality
     const searchInput = document.getElementById('settingsSearch');
     if (searchInput) {
       searchInput.addEventListener('input', function() {
@@ -893,70 +990,42 @@
         filterSettingsContent(searchTerm);
       });
     }
-
-    // Session action buttons
-    document.querySelectorAll('.view-session').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const sessionId = this.getAttribute('data-session-id');
-        const modal = new bootstrap.Modal(document.getElementById(`viewSessionModal${sessionId}`));
+    
+    // Modal automatic opening from sessionStorage
+    const modalToOpen = sessionStorage.getItem('openModal');
+    if (modalToOpen) {
+      const modal = new bootstrap.Modal(document.getElementById(modalToOpen));
+      if (modal) {
         modal.show();
+        sessionStorage.removeItem('openModal');
+      }
+    }
+    
+    // Sidebar toggle functionality for mobile
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    sidebarToggle.addEventListener('click', function() {
+      sidebar.classList.toggle('active');
+    });
+    
+    // Close sidebar when clicking on a link (for mobile)
+    const sidebarLinks = document.querySelectorAll('.sidebar a');
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth < 992) {
+          sidebar.classList.remove('active');
+        }
       });
     });
     
-    document.querySelectorAll('.edit-session').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const sessionId = this.getAttribute('data-session-id');
-        const modal = new bootstrap.Modal(document.getElementById(`editSessionModal${sessionId}`));
-        modal.show();
-      });
-    });
-    
-    document.querySelectorAll('.delete-session').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const sessionId = this.getAttribute('data-session-id');
-        const modal = new bootstrap.Modal(document.getElementById(`deleteSessionModal${sessionId}`));
-        modal.show();
-      });
-    });
-    
-    // Participant update buttons
-    document.querySelectorAll('.update-participant-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const sessionId = this.getAttribute('data-session-id');
-        const participantId = this.getAttribute('data-participant-id');
-        
-        const joinTimeInput = document.querySelector(`input[name="participant_${participantId}_join_time"]`);
-        const leaveTimeInput = document.querySelector(`input[name="participant_${participantId}_leave_time"]`);
-        const costInput = document.querySelector(`input[name="participant_${participantId}_cost"]`);
-        
-        const joinTime = joinTimeInput.value;
-        const leaveTime = leaveTimeInput.value;
-        const adjustedCost = costInput.value;
-        
-        // Create a temporary form to submit the data
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/settings/update-session-participant/${sessionId}/${participantId}`;
-        form.style.display = 'none';
-        
-        const joinTimeField = document.createElement('input');
-        joinTimeField.name = 'join_time';
-        joinTimeField.value = joinTime;
-        form.appendChild(joinTimeField);
-        
-        const leaveTimeField = document.createElement('input');
-        leaveTimeField.name = 'leave_time';
-        leaveTimeField.value = leaveTime;
-        form.appendChild(leaveTimeField);
-        
-        const costField = document.createElement('input');
-        costField.name = 'adjusted_cost';
-        costField.value = adjustedCost;
-        form.appendChild(costField);
-        
-        document.body.appendChild(form);
-        form.submit();
-      });
+    // Close sidebar when clicking outside (for mobile)
+    document.addEventListener('click', function(event) {
+      if (window.innerWidth < 992) {
+        if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+          sidebar.classList.remove('active');
+        }
+      }
     });
   });
   
