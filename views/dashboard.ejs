@@ -88,8 +88,12 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Welcome, <%= admin.username %> <i class="bi bi-emoji-smile text-warning"></i></h2>
     <div>
-      <button class="btn btn-primary quick-action-btn"><i class="bi bi-plus-circle"></i> New Session</button>
-      <button class="btn btn-success quick-action-btn"><i class="bi bi-person-plus"></i> Add Participant</button>
+      <a href="/admin/settings?tab=sessions" class="btn btn-primary quick-action-btn" id="newSessionBtn">
+        <i class="bi bi-plus-circle"></i> New Session
+      </a>
+      <a href="/admin/settings?tab=participants" class="btn btn-success quick-action-btn" id="addParticipantBtn">
+        <i class="bi bi-person-plus"></i> Add Participant
+      </a>
     </div>
   </div>
 
@@ -192,8 +196,18 @@
   </div>
 </div>
 
+<!-- Data elements to pass server data to client -->
+<div id="serverData" 
+     data-gender='<%- JSON.stringify(sessionGenderData) %>'
+     data-session-dates='<%- JSON.stringify(sessionDates) %>'
+     data-daily-chart='<%- JSON.stringify(dailyChartByMonth) %>'
+     style="display:none;">
+</div>
+
 <script>
-  const genderData = <%- JSON.stringify(sessionGenderData) %>;
+  // Get data from data attributes 
+  const dataElement = document.getElementById('serverData');
+  const genderData = JSON.parse(dataElement.dataset.gender);
   const genderLabels = genderData.map(s => {
     const date = new Date(s.start_time);
     return `${date.getMonth() + 1}/${date.getDate()}`;
@@ -240,8 +254,9 @@
       }
     }
   });
-  const sessionDates = <%- JSON.stringify(sessionDates) %>;
-  const dailyChartData = <%- JSON.stringify(dailyChartByMonth) %>;
+  
+  const sessionDates = JSON.parse(dataElement.dataset.sessionDates);
+  const dailyChartData = JSON.parse(dataElement.dataset.dailyChart);
 
   // Calendar logic
   function populateCalendar(year, month) {
@@ -374,6 +389,21 @@
   document.addEventListener("DOMContentLoaded", function() {
     setupCalendarDropdown();
     setupTrendChart();
+    
+    // Set up quick action buttons
+    document.getElementById('newSessionBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      const url = this.getAttribute('href');
+      sessionStorage.setItem('openModal', 'createSessionModal');
+      window.location.href = url;
+    });
+    
+    document.getElementById('addParticipantBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      const url = this.getAttribute('href');
+      sessionStorage.setItem('openModal', 'addParticipantModal');
+      window.location.href = url;
+    });
   });
 </script>
 </body>
