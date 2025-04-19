@@ -2,28 +2,116 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Cal Admin Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .container { max-width: 300px; margin: auto; }
-    input { width: 100%; padding: 8px; margin: 5px 0; }
-    button { width: 100%; padding: 8px; }
-    .error { color: red; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f7f9fc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      max-width: 400px;
+      width: 100%;
+      padding: 2rem;
+    }
+    .card {
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .card-header {
+      background-color: #343a40;
+      color: white;
+      padding: 1.5rem;
+      text-align: center;
+      border-bottom: none;
+    }
+    .card-body {
+      padding: 2rem;
+    }
+    .form-floating {
+      margin-bottom: 1.5rem;
+    }
+    .form-control:focus {
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    }
+    .btn-primary {
+      background-color: #343a40;
+      border-color: #343a40;
+      padding: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      background-color: #23272b;
+      border-color: #23272b;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+    .login-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .alert {
+      margin-bottom: 1.5rem;
+    }
+    .app-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .app-subtitle {
+      font-size: 1rem;
+      opacity: 0.8;
+      margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Admin Login</h1>
-    <% if(error) { %>
-      <p class="error"><%= error %></p>
-    <% } %>
-    <form action="/admin/login" method="POST">
-      <label>Username:</label>
-      <input type="text" name="username" required>
-      <label>Password:</label>
-      <input type="password" name="password" required>
-      <button type="submit">Login</button>
-    </form>
+  <div class="login-container">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-music-note-beamed login-icon"></i>
+        <h1 class="app-title">K-Cal Admin</h1>
+        <p class="app-subtitle">Karaoke Cost Management</p>
+      </div>
+      <div class="card-body">
+        <% if(error) { %>
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        <% } %>
+        
+        <form action="/admin/login" method="POST">
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+            <label for="username"><i class="bi bi-person me-2"></i>Username</label>
+          </div>
+          
+          <div class="form-floating mb-4">
+            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+            <label for="password"><i class="bi bi-lock me-2"></i>Password</label>
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Login
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
