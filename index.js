@@ -634,7 +634,8 @@ app.get('/api/sessions/:id/participants', async (req, res) => {
         p.gender
       FROM participant_sessions ps
       JOIN participants p ON ps.participant_id = p.participant_id
-      WHERE ps.session_id = $1
+      WHERE ps.session_id = $1 AND ps.leave_time IS NULL
+      ORDER BY ps.join_time
     `, [sessionId]);
 
     res.json(result.rows);
@@ -757,6 +758,9 @@ app.get('/', (req, res) => {
 async function initializeDatabase() {
   const client = await pool.connect();
   try {
+    // Begin transaction for all migrations
+    await client.query('BEGIN');
+    
     // Check if room_number column exists in sessions table
     const columnCheckResult = await client.query(`
       SELECT column_name 
@@ -765,9 +769,6 @@ async function initializeDatabase() {
     `);
     
     const hasRoomNumber = columnCheckResult.rows.length > 0;
-    
-    // Start transaction for migrations
-    await client.query('BEGIN');
     
     // Add room_number column if it doesn't exist
     if (!hasRoomNumber) {
@@ -1024,6 +1025,44 @@ app.post('/api/sessions/:sessionId/transfer-host', async (req, res) => {
     res.json({ message: 'Host transferred successfully' });
   } catch (err) {
     console.error('Error transferring host:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Handle participant rejoining a session
+app.post('/api/participant-sessions/rejoin', async (req, res) => {
+  const { participant_id, session_id, previous_record_id } = req.body;
+  
+  if (!participant_id || !session_id || !previous_record_id) {
+    return res.status(400).json({ message: 'Missing required parameters' });
+  }
+  
+  try {
+    // Simply clear the leave_time for the existing record
+    const updateResult = await pool.query(
+      `UPDATE participant_sessions 
+       SET leave_time = NULL
+       WHERE id = $1 AND participant_id = $2 AND session_id = $3
+       RETURNING *`,
+      [previous_record_id, participant_id, session_id]
+    );
+    
+    if (updateResult.rows.length === 0) {
+      // If no record was updated, fall back to creating a new record
+      const insertResult = await pool.query(
+        `INSERT INTO participant_sessions (participant_id, session_id, join_time, leave_time)
+         VALUES ($1, $2, NOW(), NULL)
+         RETURNING *`,
+        [participant_id, session_id]
+      );
+      
+      return res.status(201).json(insertResult.rows[0]);
+    }
+    
+    // Return the updated record
+    res.status(200).json(updateResult.rows[0]);
+  } catch (err) {
+    console.error('Error handling rejoin:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
