@@ -216,8 +216,31 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
   const locationsRes = await pool.query('SELECT * FROM locations ORDER BY name');
   const queryLocationId = req.query.location_id;
   const selectedLocationId = queryLocationId || adminRes.rows[0].location_id || locationsRes.rows[0]?.location_id;
-  const participantsRes = await pool.query('SELECT * FROM participants ORDER BY participant_id');
+  
+  // Get all participants
+  const participantsRes = await pool.query(
+    `SELECT p.*, COUNT(ps.session_id) as session_count 
+     FROM participants p 
+     LEFT JOIN participant_sessions ps ON p.participant_id = ps.participant_id 
+     GROUP BY p.participant_id 
+     ORDER BY p.participant_id`
+  );
 
+  // Get sessions with counts
+  const sessionsRes = await pool.query(
+    `SELECT s.*, 
+            l.name as location_name, 
+            COUNT(ps.participant_id) as participant_count,
+            SUM(ps.adjusted_cost) as revenue
+     FROM sessions s
+     LEFT JOIN locations l ON s.location_id = l.location_id
+     LEFT JOIN participant_sessions ps ON s.session_id = ps.session_id
+     GROUP BY s.session_id, l.name
+     ORDER BY s.start_time DESC
+     LIMIT 20`
+  );
+
+  // Get rate settings for selected location
   const ratesRes = await pool.query(
     'SELECT * FROM rate_settings WHERE location_id = $1 ORDER BY group_min',
     [selectedLocationId]
@@ -234,22 +257,30 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
     rates: ratesRes.rows,
     message,
     participants: participantsRes.rows,
+    sessions: sessionsRes.rows,
+    req: req
   });
 });
 
 // --- Profile Update ---
-app.post('/admin/settings/update-profile', async (req, res) => {
+app.post('/admin/settings/update-profile', requireAdmin, async (req, res) => {
   const { email } = req.body;
   const adminId = req.session.admin_id;
   await pool.query('UPDATE admins SET email = $1 WHERE admin_id = $2', [email, adminId]);
   req.session.message = 'Email updated successfully!';
-  res.redirect('/admin/settings');
+  res.redirect('/admin/settings?tab=profile');
 });
 
 // --- Password Update ---
-app.post('/admin/settings/update-password', async (req, res) => {
-  const { current_password, new_password } = req.body;
+app.post('/admin/settings/update-password', requireAdmin, async (req, res) => {
+  const { current_password, new_password, confirm_password } = req.body;
   const adminId = req.session.admin_id;
+  
+  if (new_password !== confirm_password) {
+    req.session.message = 'New passwords do not match!';
+    return res.redirect('/admin/settings?tab=profile');
+  }
+  
   const result = await pool.query('SELECT password_hash FROM admins WHERE admin_id = $1', [adminId]);
   const hashCurrent = crypto.createHash('sha256').update(current_password).digest('hex');
 
@@ -260,19 +291,65 @@ app.post('/admin/settings/update-password', async (req, res) => {
   } else {
     req.session.message = 'Current password is incorrect!';
   }
-  res.redirect('/admin/settings');
+  res.redirect('/admin/settings?tab=profile');
 });
 
 // --- Add Location ---
-app.post('/admin/settings/add-location', async (req, res) => {
+app.post('/admin/settings/add-location', requireAdmin, async (req, res) => {
   const { name } = req.body;
-  await pool.query('INSERT INTO locations (name) VALUES ($1)', [name]);
-  req.session.message = 'Location added successfully!';
-  res.redirect('/admin/settings');
+  try {
+    await pool.query('INSERT INTO locations (name) VALUES ($1)', [name]);
+    req.session.message = 'Location added successfully!';
+  } catch (err) {
+    console.error('Error adding location:', err);
+    req.session.message = 'Failed to add location: ' + err.message;
+  }
+  res.redirect('/admin/settings?tab=locations');
+});
+
+// --- Update Location ---
+app.post('/admin/settings/update-location/:location_id', requireAdmin, async (req, res) => {
+  const { location_id } = req.params;
+  const { name } = req.body;
+  
+  try {
+    await pool.query('UPDATE locations SET name = $1 WHERE location_id = $2', [name, location_id]);
+    req.session.message = 'Location updated successfully!';
+  } catch (err) {
+    console.error('Error updating location:', err);
+    req.session.message = 'Failed to update location: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=locations');
+});
+
+// --- Delete Location ---
+app.post('/admin/settings/delete-location/:location_id', requireAdmin, async (req, res) => {
+  const { location_id } = req.params;
+  
+  try {
+    // Check if location is in use by sessions
+    const sessionsCheck = await pool.query('SELECT COUNT(*) FROM sessions WHERE location_id = $1', [location_id]);
+    
+    if (parseInt(sessionsCheck.rows[0].count) > 0) {
+      req.session.message = 'Cannot delete location: It is used by existing sessions.';
+    } else {
+      // Delete related rate settings first
+      await pool.query('DELETE FROM rate_settings WHERE location_id = $1', [location_id]);
+      // Then delete the location
+      await pool.query('DELETE FROM locations WHERE location_id = $1', [location_id]);
+      req.session.message = 'Location deleted successfully!';
+    }
+  } catch (err) {
+    console.error('Error deleting location:', err);
+    req.session.message = 'Failed to delete location: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=locations');
 });
 
 // --- Save Rates ---
-app.post('/admin/settings/save-rates', async (req, res) => {
+app.post('/admin/settings/save-rates', requireAdmin, async (req, res) => {
   const { location_id, ...ratesInput } = req.body;
   const groupSizes = [
     { min: 1, max: 3 },
@@ -310,13 +387,33 @@ app.post('/admin/settings/save-rates', async (req, res) => {
       }
     }
     req.session.message = 'Rates updated successfully!';
-    res.redirect(`/admin/settings?location_id=${location_id}`);
   } catch (err) {
     console.error("Error saving rates:", err);
-    res.status(500).send("Failed to save rates.");
+    req.session.message = "Failed to save rates: " + err.message;
   }
+  res.redirect(`/admin/settings?tab=rates&location_id=${location_id}`);
 });
 
+// --- Add Participant ---
+app.post('/admin/settings/add-participant', requireAdmin, async (req, res) => {
+  const { name, gender, email } = req.body;
+  
+  try {
+    await pool.query(
+      'INSERT INTO participants (name, gender, email) VALUES ($1, $2, $3)',
+      [name, gender || null, email || null]
+    );
+    
+    req.session.message = 'Participant added successfully!';
+  } catch (err) {
+    console.error('Failed to add participant:', err);
+    req.session.message = 'Failed to add participant: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=participants');
+});
+
+// --- Update Participants ---
 app.post('/admin/settings/update-participants', requireAdmin, async (req, res) => {
   try {
     const updates = Object.entries(req.body);
@@ -329,17 +426,100 @@ app.post('/admin/settings/update-participants', requireAdmin, async (req, res) =
     });
 
     for (const id in grouped) {
-      const { name, gender } = grouped[id];
-      await pool.query('UPDATE participants SET name = $1, gender = $2 WHERE participant_id = $3', [name, gender || null, id]);
+      const { name, gender, email } = grouped[id];
+      await pool.query(
+        'UPDATE participants SET name = $1, gender = $2, email = $3 WHERE participant_id = $4', 
+        [name, gender || null, email || null, id]
+      );
     }
 
     req.session.message = '✅ Participant changes saved!';
-    res.redirect('/admin/settings');
   } catch (err) {
     console.error('Failed to update participants:', err);
-    req.session.message = '❌ Failed to update participants.';
-    res.redirect('/admin/settings');
+    req.session.message = '❌ Failed to update participants: ' + err.message;
   }
+  
+  res.redirect('/admin/settings?tab=participants');
+});
+
+// --- Delete Participant ---
+app.post('/admin/settings/delete-participant/:participant_id', requireAdmin, async (req, res) => {
+  const { participant_id } = req.params;
+  
+  try {
+    // First check if participant has sessions
+    const sessionsCheck = await pool.query(
+      'SELECT COUNT(*) FROM participant_sessions WHERE participant_id = $1',
+      [participant_id]
+    );
+    
+    if (parseInt(sessionsCheck.rows[0].count) > 0) {
+      // If participant has sessions, just anonymize the data
+      await pool.query(
+        `UPDATE participants 
+         SET name = 'Deleted User', gender = NULL, email = NULL, device_id = NULL, password = NULL, 
+             security_question = NULL, security_answer = NULL
+         WHERE participant_id = $1`,
+        [participant_id]
+      );
+      req.session.message = 'Participant anonymized (had existing sessions)';
+    } else {
+      // No sessions, can fully delete
+      await pool.query('DELETE FROM participants WHERE participant_id = $1', [participant_id]);
+      req.session.message = 'Participant deleted successfully!';
+    }
+  } catch (err) {
+    console.error('Failed to delete participant:', err);
+    req.session.message = 'Failed to delete participant: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=participants');
+});
+
+// --- Create Session ---
+app.post('/admin/settings/create-session', requireAdmin, async (req, res) => {
+  const { date, time, location_id, room_number } = req.body;
+  
+  try {
+    // Combine date and time into timestamp
+    const dateTimeStr = `${date}T${time}:00`;
+    const timestamp = new Date(dateTimeStr);
+    
+    if (isNaN(timestamp.getTime())) {
+      throw new Error('Invalid date or time format');
+    }
+    
+    await pool.query(
+      'INSERT INTO sessions (location_id, start_time, room_number) VALUES ($1, $2, $3)',
+      [location_id, timestamp, room_number || null]
+    );
+    
+    req.session.message = 'Session created successfully!';
+  } catch (err) {
+    console.error('Failed to create session:', err);
+    req.session.message = 'Failed to create session: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=sessions');
+});
+
+// --- Delete Session ---
+app.post('/admin/settings/delete-session/:session_id', requireAdmin, async (req, res) => {
+  const { session_id } = req.params;
+  
+  try {
+    // First delete related participant sessions
+    await pool.query('DELETE FROM participant_sessions WHERE session_id = $1', [session_id]);
+    // Then delete the session
+    await pool.query('DELETE FROM sessions WHERE session_id = $1', [session_id]);
+    
+    req.session.message = 'Session deleted successfully!';
+  } catch (err) {
+    console.error('Failed to delete session:', err);
+    req.session.message = 'Failed to delete session: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=sessions');
 });
 
 app.use(express.json()); 

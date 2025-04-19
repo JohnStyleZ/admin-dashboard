@@ -5,16 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; }
+    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; z-index: 100; }
     .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
     .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
+    .sidebar a i { margin-right: 10px; }
     .main { margin-left: 250px; padding: 30px; }
-    .card { border: none; border-radius: 10px; }
+    .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .stat-card { position: relative; padding: 20px; border-radius: 10px; overflow: hidden; }
+    .stat-card .icon { position: absolute; right: 10px; top: 10px; font-size: 3rem; opacity: 0.2; }
+    .stat-card h3 { margin: 0; font-size: 2rem; font-weight: bold; }
+    .stat-card p { margin: 0; }
     .calendar-day {
       background: #fff; border: 1px solid #dee2e6;
       padding: 6px; text-align: center; border-radius: 4px; font-size: 12px;
@@ -22,9 +29,9 @@
     #calendar {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      grid-template-rows: repeat(6, 1fr); /* ← Force 6 rows always */
+      grid-template-rows: repeat(6, 1fr); 
       gap: 3px;
-      height: 210px; /* 6 rows × 35px */
+      height: 210px;
     }
     
     .calendar-day {
@@ -35,8 +42,8 @@
       border: 1px solid #dee2e6;
       background: #fff;
       border-radius: 4px;
-      height: 100%;     /* ← Fills the row completely */
-      width: 100%;      /* ← Fills the column */
+      height: 100%;
+      width: 100%;
       box-sizing: border-box;
     }
     
@@ -50,72 +57,138 @@
       background: none;
       border: none;
     }
+    .quick-action-btn {
+      border-radius: 50px;
+      padding: 10px 20px;
+      margin: 5px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .recent-activity-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .recent-activity-item:last-child {
+      border-bottom: none;
+    }
   </style>
 </head>
 <body>
 
 <div class="sidebar">
-  <h2>Admin Panel</h2>
-  <a class="active" href="/admin/dashboard">Dashboard</a>
-  <a href="/admin/analytics">Analytics</a>
-  <a href="/admin/reports">Reports</a>
-  <a href="/admin/settings">Settings</a>
-  <a href="/admin/logout">Logout</a>
+  <h2><i class="bi bi-speedometer2"></i> Admin Panel</h2>
+  <a class="active" href="/admin/dashboard"><i class="bi bi-house-door"></i> Dashboard</a>
+  <a href="/admin/analytics"><i class="bi bi-bar-chart"></i> Analytics</a>
+  <a href="/admin/reports"><i class="bi bi-file-text"></i> Reports</a>
+  <a href="/admin/settings"><i class="bi bi-gear"></i> Settings</a>
+  <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
 
 <div class="main">
-  <h2 class="mb-4">Welcome, <%= admin.username %></h2>
-  <div class="stats-grid">
-    <div class="card p-4 shadow-sm"><h5>Total Participants</h5><p class="fs-4"><%= totalParticipants %></p></div>
-    <div class="card p-4 shadow-sm"><h5>Gender Ratio</h5><p>👨 <%= maleCount %> | 👩 <%= femaleCount %></p></div>
-    <div class="card p-4 shadow-sm"><h5>Average Cost per Person</h5><p class="fs-4">$<%= avgCost %></p></div>
-    <div class="card p-4 shadow-sm"><h5>Total Spent</h5><p class="fs-4">$<%= totalSpent %></p></div>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Welcome, <%= admin.username %> <i class="bi bi-emoji-smile text-warning"></i></h2>
+    <div>
+      <button class="btn btn-primary quick-action-btn"><i class="bi bi-plus-circle"></i> New Session</button>
+      <button class="btn btn-success quick-action-btn"><i class="bi bi-person-plus"></i> Add Participant</button>
+    </div>
   </div>
 
-<div class="row mt-4">
-  <!-- Left Column: Gender Chart -->
-  <div class="col-md-9 mb-4">
-    <div class="card p-3 shadow-sm">
-      <h5 class="mb-3">Session Gender Breakdown</h5>
-      <div style="height: 580px;">
-        <canvas id="genderChart"></canvas>
+  <div class="stats-grid mb-4">
+    <div class="card stat-card bg-primary text-white">
+      <div class="icon"><i class="bi bi-people"></i></div>
+      <p>Total Participants</p>
+      <h3><%= totalParticipants %></h3>
+    </div>
+    <div class="card stat-card bg-success text-white">
+      <div class="icon"><i class="bi bi-gender-ambiguous"></i></div>
+      <p>Gender Ratio</p>
+      <h3><%= maleCount %>:<%= femaleCount %></h3>
+      <small>Male : Female</small>
+    </div>
+    <div class="card stat-card bg-info text-white">
+      <div class="icon"><i class="bi bi-cash-coin"></i></div>
+      <p>Average Cost</p>
+      <h3>$<%= avgCost %></h3>
+      <small>per person</small>
+    </div>
+    <div class="card stat-card bg-warning text-white">
+      <div class="icon"><i class="bi bi-wallet2"></i></div>
+      <p>Total Revenue</p>
+      <h3>$<%= totalSpent %></h3>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <!-- Left Column: Gender Chart -->
+    <div class="col-md-8 mb-4">
+      <div class="card p-3 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-gender-ambiguous"></i> Session Gender Breakdown</h5>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary">Week</button>
+            <button class="btn btn-sm btn-outline-secondary active">Month</button>
+            <button class="btn btn-sm btn-outline-secondary">Year</button>
+          </div>
+        </div>
+        <div style="height: 350px;">
+          <canvas id="genderChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card p-4 shadow-sm mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-graph-up"></i> Daily Revenue</h5>
+          <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
+        </div>
+        <canvas id="trendChart" height="100"></canvas>
       </div>
     </div>
 
-  </div>
-
-  <!-- Right Column: Calendar + Top 10 -->
-  <div class="col-md-3 mb-4">
-    <div class="card p-3 shadow-sm">
-      <h5 class="mb-2">Post-Events</h5>
-      <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
-      <div class="calendar-header d-grid" style="grid-template-columns: repeat(7, 1fr); font-weight: bold; font-size: 13px; text-align: center; margin-bottom: 5px;">
-        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    <!-- Right Column: Calendar + Recent Activity + Top Participants -->
+    <div class="col-md-4 mb-4">
+      <div class="card p-3 shadow-sm">
+        <h5 class="mb-2"><i class="bi bi-calendar-event"></i> Event Calendar</h5>
+        <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
+        <div class="calendar-header d-grid" style="grid-template-columns: repeat(7, 1fr); font-weight: bold; font-size: 13px; text-align: center; margin-bottom: 5px;">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+        <div id="calendar"></div>
       </div>
-      <div id="calendar"></div>
+
+      <div class="card p-3 shadow-sm mt-3">
+        <h5 class="mb-2"><i class="bi bi-trophy"></i> Top Participants</h5>
+        <ol class="list-group list-group-numbered">
+          <% topParticipants.slice(0, 5).forEach(p => { %>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <%= p.name %>
+              <span class="badge bg-primary rounded-pill"><%= p.count %> sessions</span>
+            </li>
+          <% }) %>
+        </ol>
+        <a href="/admin/settings?tab=participants" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+      </div>
+
+      <div class="card p-3 shadow-sm mt-3">
+        <h5 class="mb-2"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+        <div class="recent-activity">
+          <% sessionGenderData.slice(0, 5).forEach((s, i) => { 
+            const date = new Date(s.start_time);
+            const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+          %>
+            <div class="recent-activity-item">
+              <div class="d-flex justify-content-between">
+                <span><strong>Session <%= s.session_id %></strong> (<%= formattedDate %>)</span>
+                <span class="badge bg-success"><%= parseInt(s.male_count) + parseInt(s.female_count) %> people</span>
+              </div>
+              <small class="text-muted">
+                <%= s.male_count %> males, <%= s.female_count %> females
+              </small>
+            </div>
+          <% }) %>
+        </div>
+        <a href="/admin/analytics" class="btn btn-sm btn-outline-primary mt-2">More Details</a>
+      </div>
     </div>
-
-    <div class="card p-3 shadow-sm mt-3">
-      <h5 class="mb-2">Top 10 Participants</h5>
-      <ol class="mt-2 small">
-        <% topParticipants.forEach(p => { %>
-          <li><%= p.name %> - <%= p.count %> sessions</li>
-        <% }) %>
-      </ol>
-    </div>
-  </div>
-</div>
-
-
-
-
-  <div class="card p-4 shadow-sm">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="mb-0">Daily Spend - Current Month</h5>
-      <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
-    </div>
-    <canvas id="trendChart" height="100"></canvas>
   </div>
 </div>
 
@@ -193,79 +266,115 @@
       dayEl.textContent = day;
       container.appendChild(dayEl);
     }
+
+    // Fill remaining slots to complete 6 rows
+    const totalDays = firstDay + daysInMonth;
+    const remainingSlots = 42 - totalDays; // 6 rows × 7 columns = 42 slots
+    for (let i = 0; i < remainingSlots; i++) {
+      const blank = document.createElement("div");
+      blank.classList.add("calendar-day", "blank");
+      container.appendChild(blank);
+    }
   }
 
   function setupCalendarDropdown() {
     const now = new Date();
     const select = document.getElementById("calendarMonth");
+    
+    // Populate dropdown with last 12 months
     for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - i);
       const option = document.createElement("option");
-      option.value = d.getFullYear() + "-" + d.getMonth();
+      option.value = d.getMonth() + "-" + d.getFullYear();
       option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (i === 0) option.selected = true;
       select.appendChild(option);
     }
-
-    select.value = now.getFullYear() + "-" + now.getMonth();
-    select.addEventListener("change", e => {
-      const [y, m] = e.target.value.split("-").map(Number);
-      populateCalendar(y, m);
-    });
-
+    
+    // Initial calendar display
     populateCalendar(now.getFullYear(), now.getMonth());
-  }
-
-  // Chart logic
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'Daily Spend ($)',
-        data: [],
-        backgroundColor: '#0d6efd'
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
-
-  function updateChart(monthKey) {
-    const data = dailyChartData[monthKey] || [];
-    chart.data.labels = data.map(d => d.day);
-    chart.data.datasets[0].data = data.map(d => d.total.toFixed(2));
-    chart.update();
-  }
-
-  function setupChartDropdown() {
-    const now = new Date();
-    const select = document.getElementById("chartMonth");
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = d.getFullYear() + "-" + d.getMonth();
-      const option = document.createElement("option");
-      option.value = key;
-      option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      select.appendChild(option);
-    }
-
-    select.value = now.getFullYear() + "-" + now.getMonth();
-    select.addEventListener("change", e => {
-      const [y, m] = e.target.value.split("-").map(Number);
-      const key = y + '-' + String(m + 1).padStart(2, '0');
-      updateChart(key);
+    
+    // Handle month change
+    select.addEventListener("change", function() {
+      const [month, year] = this.value.split("-");
+      populateCalendar(parseInt(year), parseInt(month));
     });
-
-    const defaultKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-    updateChart(defaultKey);
   }
-
-  setupCalendarDropdown();
-  setupChartDropdown();
+  
+  // Setup trend chart
+  function setupTrendChart() {
+    const select = document.getElementById("chartMonth");
+    const months = Object.keys(dailyChartData).sort().reverse();
+    
+    months.forEach(month => {
+      const option = document.createElement("option");
+      option.value = month;
+      const [year, monthNum] = month.split("-");
+      const monthName = new Date(year, monthNum - 1).toLocaleString('default', { month: 'long' });
+      option.textContent = monthName + " " + year;
+      select.appendChild(option);
+    });
+    
+    if (months.length > 0) {
+      updateTrendChart(months[0]);
+    }
+    
+    select.addEventListener("change", function() {
+      updateTrendChart(this.value);
+    });
+  }
+  
+  function updateTrendChart(month) {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    const data = dailyChartData[month] || [];
+    const labels = data.map(d => d.day.split("-")[2]); // Just show day number
+    const values = data.map(d => d.total);
+    
+    if (window.trendChart) window.trendChart.destroy();
+    
+    window.trendChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Daily Revenue ($)',
+          data: values,
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.1,
+          fill: true
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '$' + value;
+              }
+            }
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return '$' + context.raw.toFixed(2);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  // Initialize components
+  document.addEventListener("DOMContentLoaded", function() {
+    setupCalendarDropdown();
+    setupTrendChart();
+  });
 </script>
 </body>
 </html>

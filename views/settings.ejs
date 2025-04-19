@@ -5,28 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Settings</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <style>
     body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; }
+    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; z-index: 100; }
     .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
     .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
+    .sidebar a i { margin-right: 10px; }
     .main { margin-left: 250px; padding: 30px; }
-    .card { border: none; border-radius: 10px; }
+    .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .nav-tabs .nav-link { color: #495057; border-radius: 8px 8px 0 0; padding: 10px 20px; }
+    .nav-tabs .nav-link.active { background-color: #fff; font-weight: bold; }
+    .nav-tabs .nav-link i { margin-right: 8px; }
+    .tab-content { background-color: #fff; border-radius: 0 8px 8px 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .search-box { max-width: 300px; }
+    .table-responsive { overflow-x: auto; }
+    .action-buttons .btn { margin-right: 5px; }
+    .pagination { margin-bottom: 0; }
   </style>
 </head>
 <body>
 <div class="sidebar">
-  <h2>Admin Panel</h2>
-  <a href="/admin/dashboard">Dashboard</a>
-  <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
-  <a href="/admin/reports" class="<%= title === 'Reports' ? 'active' : '' %>">Reports</a>
-  <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
-  <a href="/admin/logout">Logout</a>
+  <h2><i class="bi bi-speedometer2"></i> Admin Panel</h2>
+  <a href="/admin/dashboard"><i class="bi bi-house-door"></i> Dashboard</a>
+  <a href="/admin/analytics"><i class="bi bi-bar-chart"></i> Analytics</a>
+  <a href="/admin/reports"><i class="bi bi-file-text"></i> Reports</a>
+  <a href="/admin/settings" class="active"><i class="bi bi-gear"></i> Settings</a>
+  <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
 <div class="main p-4">
-  <h2 class="mb-4">⚙️ Settings</h2>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-gear"></i> Settings</h2>
+    <div class="search-box input-group">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control" id="settingsSearch" placeholder="Search settings...">
+    </div>
+  </div>
 
   <% if (message) { %>
     <div class="alert alert-info alert-dismissible fade show" role="alert">
@@ -35,137 +51,459 @@
     </div>
   <% } %>
 
-  <div class="row g-4">
+  <!-- Tabs Navigation -->
+  <ul class="nav nav-tabs mb-3" id="settingsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= !req.query.tab || req.query.tab === 'profile' ? 'active' : '' %>" 
+              id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" 
+              type="button" role="tab" aria-selected="true">
+        <i class="bi bi-person-circle"></i> Profile
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= req.query.tab === 'participants' ? 'active' : '' %>" 
+              id="participants-tab" data-bs-toggle="tab" data-bs-target="#participants" 
+              type="button" role="tab" aria-selected="false">
+        <i class="bi bi-people"></i> Participants
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= req.query.tab === 'locations' ? 'active' : '' %>" 
+              id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" 
+              type="button" role="tab" aria-selected="false">
+        <i class="bi bi-geo-alt"></i> Locations
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= req.query.tab === 'rates' ? 'active' : '' %>" 
+              id="rates-tab" data-bs-toggle="tab" data-bs-target="#rates" 
+              type="button" role="tab" aria-selected="false">
+        <i class="bi bi-cash-coin"></i> Rates
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= req.query.tab === 'sessions' ? 'active' : '' %>" 
+              id="sessions-tab" data-bs-toggle="tab" data-bs-target="#sessions" 
+              type="button" role="tab" aria-selected="false">
+        <i class="bi bi-calendar-event"></i> Sessions
+      </button>
+    </li>
+  </ul>
 
-    <!-- Admin Profile -->
-    <div class="col-md-6">
-      <div class="card p-3 shadow-sm">
-        <h5>👤 Admin Profile</h5>
-        <form action="/admin/settings/update-profile" method="POST">
-          <div class="mb-2">
-            <label class="form-label">Username</label>
-            <input type="text" class="form-control" value="<%= admin.username %>" disabled>
+  <!-- Tab Content -->
+  <div class="tab-content" id="settingsTabContent">
+    <!-- Profile Tab -->
+    <div class="tab-pane fade <%= !req.query.tab || req.query.tab === 'profile' ? 'show active' : '' %>" 
+         id="profile" role="tabpanel" aria-labelledby="profile-tab">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card p-4">
+            <h5 class="mb-3"><i class="bi bi-person-circle"></i> Admin Profile</h5>
+            <form action="/admin/settings/update-profile" method="POST">
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" value="<%= admin.username %>" disabled>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" value="<%= admin.email %>">
+              </div>
+              <button type="submit" class="btn btn-primary">Update Email</button>
+            </form>
           </div>
-          <div class="mb-2">
-            <label class="form-label">Email</label>
-            <input type="email" class="form-control" name="email" value="<%= admin.email %>">
+        </div>
+        <div class="col-md-6">
+          <div class="card p-4">
+            <h5 class="mb-3"><i class="bi bi-shield-lock"></i> Security</h5>
+            <form action="/admin/settings/update-password" method="POST">
+              <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" name="current_password" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" name="new_password" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" name="confirm_password" required>
+              </div>
+              <button type="submit" class="btn btn-warning">Change Password</button>
+            </form>
           </div>
-          <button type="submit" class="btn btn-primary">Update Email</button>
-        </form>
-        <hr>
-        <form action="/admin/settings/update-password" method="POST">
-          <h6>🔒 Change Password</h6>
-          <input type="password" class="form-control mb-2" name="current_password" placeholder="Current Password" required>
-          <input type="password" class="form-control mb-2" name="new_password" placeholder="New Password" required>
-          <button type="submit" class="btn btn-warning">Change Password</button>
-        </form>
+        </div>
       </div>
     </div>
 
-    <!-- Rate Settings with Location -->
-    <div class="col-md-6">
-      <div class="card p-3 shadow-sm">
-        <h5 class="mb-2">📉 Rate Settings</h5>
-
-        <label class="form-label">Select Location</label>
-        <select class="form-select mb-3" onchange="window.location.href='/admin/settings?location_id=' + this.value">
-          <% locations.forEach(loc => { %>
-            <option value="<%= loc.location_id %>" <%= loc.location_id == selectedLocationId ? 'selected' : '' %>>
-              <%= loc.name %>
-            </option>
-          <% }) %>
-        </select>
-
-        <form action="/admin/settings/save-rates" method="POST">
-          <input type="hidden" name="location_id" value="<%= selectedLocationId %>">
-
-          <div class="row fw-bold mb-2">
-            <div class="col-4">Group Size</div>
-            <div class="col-4">2PM–7PM Rate ($/hr)</div>
-            <div class="col-4">After 7PM Rate ($/hr)</div>
-          </div>
-
-          <% const groupSizes = [
-            { min: 1, max: 3 },
-            { min: 4, max: 5 },
-            { min: 6, max: 8 },
-            { min: 9, max: 10 },
-            { min: 11, max: 15 },
-            { min: 16, max: 20 }
-          ]; %>
-
-          <% groupSizes.forEach(group => {
-            const rate = rates.find(r => r.group_min === group.min && r.group_max === group.max) || {};
-          %>
-            <div class="row mb-2">
-              <div class="col-4"><%= group.min %>–<%= group.max %> people</div>
-              <div class="col-4">
-                <input type="number" name="day_<%= group.min %>_<%= group.max %>" class="form-control"
-                       value="<%= rate.day_rate || '' %>" required />
-              </div>
-              <div class="col-4">
-                <input type="number" name="night_<%= group.min %>_<%= group.max %>" class="form-control"
-                       value="<%= rate.night_rate || '' %>" required />
-              </div>
+    <!-- Participants Tab -->
+    <div class="tab-pane fade <%= req.query.tab === 'participants' ? 'show active' : '' %>" 
+         id="participants" role="tabpanel" aria-labelledby="participants-tab">
+      <div class="d-flex justify-content-between mb-3">
+        <h5><i class="bi bi-people"></i> Manage Participants</h5>
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addParticipantModal">
+          <i class="bi bi-person-plus"></i> Add Participant
+        </button>
+      </div>
+      
+      <div class="card">
+        <div class="card-body p-0">
+          <form action="/admin/settings/update-participants" method="POST">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Gender</th>
+                    <th>Email</th>
+                    <th>Device ID</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% participants.forEach(p => { %>
+                    <tr>
+                      <td><%= p.participant_id %></td>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" name="name_<%= p.participant_id %>" value="<%= p.name %>">
+                      </td>
+                      <td>
+                        <select name="gender_<%= p.participant_id %>" class="form-select form-select-sm">
+                          <option value="Male" <%= p.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                          <option value="Female" <%= p.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                          <option value="" <%= !p.gender ? 'selected' : '' %>>—</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input type="email" class="form-control form-control-sm" name="email_<%= p.participant_id %>" value="<%= p.email || '' %>">
+                      </td>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" name="device_id_<%= p.participant_id %>" value="<%= p.device_id || '' %>" readonly>
+                      </td>
+                      <td class="action-buttons">
+                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewParticipantModal<%= p.participant_id %>">
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteParticipantModal<%= p.participant_id %>">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
             </div>
-          <% }) %>
-
-          <button type="submit" class="btn btn-success mt-3">Save Rates</button>
-        </form>
-      </div>
-
-      <!-- Add Location -->
-      <div class="card p-3 shadow-sm mt-3">
-        <h5>📍 Add Location</h5>
-        <form action="/admin/settings/add-location" method="POST">
-          <input type="text" class="form-control mb-2" name="name" placeholder="New Location Name" required>
-          <button type="submit" class="btn btn-secondary">Add Location</button>
-        </form>
+            <div class="p-3 d-flex justify-content-between align-items-center">
+              <button type="submit" class="btn btn-success">Save Changes</button>
+              <nav aria-label="Participant navigation">
+                <ul class="pagination pagination-sm">
+                  <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                  <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                  <li class="page-item"><a class="page-link" href="#">2</a></li>
+                  <li class="page-item"><a class="page-link" href="#">3</a></li>
+                  <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                </ul>
+              </nav>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
-    <!-- Participants Management -->
-    <div class="col-md-12">
-      <div class="card p-3 shadow-sm">
-        <h5 class="mb-3">👥 Manage Participants</h5>
-        <form action="/admin/settings/update-participants" method="POST">
+
+    <!-- Locations Tab -->
+    <div class="tab-pane fade <%= req.query.tab === 'locations' ? 'show active' : '' %>" 
+         id="locations" role="tabpanel" aria-labelledby="locations-tab">
+      <div class="d-flex justify-content-between mb-3">
+        <h5><i class="bi bi-geo-alt"></i> Manage Locations</h5>
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addLocationModal">
+          <i class="bi bi-plus-circle"></i> Add Location
+        </button>
+      </div>
+      
+      <div class="card">
+        <div class="card-body p-0">
           <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
+            <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
                   <th>ID</th>
                   <th>Name</th>
-                  <th>Gender</th>
+                  <th>Sessions Count</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <% participants.forEach(p => { %>
+                <% locations.forEach(loc => { %>
                   <tr>
-                    <td><%= p.participant_id %></td>
-                    <td>
-                      <input type="text" class="form-control form-control-sm" name="name_<%= p.participant_id %>" value="<%= p.name %>">
-                    </td>
-                    <td>
-                      <select name="gender_<%= p.participant_id %>" class="form-select form-select-sm">
-                        <option value="Male" <%= p.gender === 'Male' ? 'selected' : '' %>>Male</option>
-                        <option value="Female" <%= p.gender === 'Female' ? 'selected' : '' %>>Female</option>
-                        <option value="" <%= !p.gender ? 'selected' : '' %>>—</option>
-                      </select>
+                    <td><%= loc.location_id %></td>
+                    <td><%= loc.name %></td>
+                    <td><span class="badge bg-info">0</span></td>
+                    <td class="action-buttons">
+                      <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editLocationModal<%= loc.location_id %>">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteLocationModal<%= loc.location_id %>">
+                        <i class="bi bi-trash"></i>
+                      </button>
                     </td>
                   </tr>
                 <% }) %>
               </tbody>
             </table>
           </div>
-          <button type="submit" class="btn btn-primary mt-2">Save Changes</button>
+        </div>
+      </div>
+      
+      <!-- Add Location Modal -->
+      <div class="modal fade" id="addLocationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Add New Location</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/admin/settings/add-location" method="POST">
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="locationName" class="form-label">Location Name</label>
+                  <input type="text" class="form-control" id="locationName" name="name" required>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Location</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rates Tab -->
+    <div class="tab-pane fade <%= req.query.tab === 'rates' ? 'show active' : '' %>" 
+         id="rates" role="tabpanel" aria-labelledby="rates-tab">
+      <div class="card p-4">
+        <h5 class="mb-3"><i class="bi bi-cash-coin"></i> Rate Settings</h5>
+        
+        <div class="mb-3">
+          <label class="form-label">Select Location</label>
+          <select class="form-select" onchange="window.location.href='/admin/settings?tab=rates&location_id=' + this.value">
+            <% locations.forEach(loc => { %>
+              <option value="<%= loc.location_id %>" <%= loc.location_id == selectedLocationId ? 'selected' : '' %>>
+                <%= loc.name %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+
+        <form action="/admin/settings/save-rates" method="POST">
+          <input type="hidden" name="location_id" value="<%= selectedLocationId %>">
+
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Group Size</th>
+                  <th>2PM–7PM Rate ($/hr)</th>
+                  <th>After 7PM Rate ($/hr)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% const groupSizes = [
+                  { min: 1, max: 3 },
+                  { min: 4, max: 5 },
+                  { min: 6, max: 8 },
+                  { min: 9, max: 10 },
+                  { min: 11, max: 15 },
+                  { min: 16, max: 20 }
+                ]; %>
+
+                <% groupSizes.forEach(group => {
+                  const rate = rates.find(r => r.group_min === group.min && r.group_max === group.max) || {};
+                %>
+                  <tr>
+                    <td><%= group.min %>–<%= group.max %> people</td>
+                    <td>
+                      <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" step="0.01" name="day_<%= group.min %>_<%= group.max %>" class="form-control"
+                               value="<%= rate.day_rate || '' %>" required />
+                      </div>
+                    </td>
+                    <td>
+                      <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" step="0.01" name="night_<%= group.min %>_<%= group.max %>" class="form-control"
+                               value="<%= rate.night_rate || '' %>" required />
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+
+          <button type="submit" class="btn btn-success mt-3"><i class="bi bi-save"></i> Save Rates</button>
         </form>
       </div>
     </div>
 
+    <!-- Sessions Tab -->
+    <div class="tab-pane fade <%= req.query.tab === 'sessions' ? 'show active' : '' %>" 
+         id="sessions" role="tabpanel" aria-labelledby="sessions-tab">
+      <div class="d-flex justify-content-between mb-3">
+        <h5><i class="bi bi-calendar-event"></i> Manage Sessions</h5>
+        <div>
+          <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#createSessionModal">
+            <i class="bi bi-plus-circle"></i> Create Session
+          </button>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary active">All</button>
+            <button class="btn btn-outline-secondary">This Month</button>
+            <button class="btn btn-outline-secondary">Last Month</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Date & Time</th>
+                  <th>Location</th>
+                  <th>Room</th>
+                  <th>Participants</th>
+                  <th>Revenue</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% for(let i = 0; i < 5; i++) { 
+                  const fakeDate = new Date();
+                  fakeDate.setDate(fakeDate.getDate() - i);
+                %>
+                <tr>
+                  <td>#<%= 100 + i %></td>
+                  <td><%= fakeDate.toLocaleDateString() %> <%= fakeDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></td>
+                  <td><%= locations[i % locations.length].name %></td>
+                  <td>Room <%= Math.floor(Math.random() * 10) + 1 %></td>
+                  <td><span class="badge bg-primary"><%= Math.floor(Math.random() * 15) + 5 %></span></td>
+                  <td>$<%= (Math.random() * 200 + 100).toFixed(2) %></td>
+                  <td class="action-buttons">
+                    <button type="button" class="btn btn-sm btn-info">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="p-3 d-flex justify-content-end">
+            <nav aria-label="Session navigation">
+              <ul class="pagination pagination-sm">
+                <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item"><a class="page-link" href="#">Next</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Participant Modal -->
+<div class="modal fade" id="addParticipantModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Participant</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/admin/settings/add-participant" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="participantName" class="form-label">Name</label>
+            <input type="text" class="form-control" id="participantName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="participantGender" class="form-label">Gender</label>
+            <select class="form-select" id="participantGender" name="gender">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="">Not Specified</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="participantEmail" class="form-label">Email (Optional)</label>
+            <input type="email" class="form-control" id="participantEmail" name="email">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Participant</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Create Session Modal -->
+<div class="modal fade" id="createSessionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create New Session</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/admin/settings/create-session" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="sessionDate" class="form-label">Date</label>
+            <input type="date" class="form-control" id="sessionDate" name="date" required>
+          </div>
+          <div class="mb-3">
+            <label for="sessionTime" class="form-label">Time</label>
+            <input type="time" class="form-control" id="sessionTime" name="time" required>
+          </div>
+          <div class="mb-3">
+            <label for="sessionLocation" class="form-label">Location</label>
+            <select class="form-select" id="sessionLocation" name="location_id" required>
+              <% locations.forEach(loc => { %>
+                <option value="<%= loc.location_id %>"><%= loc.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="sessionRoom" class="form-label">Room Number</label>
+            <input type="text" class="form-control" id="sessionRoom" name="room_number">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Session</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+  // Auto-dismiss alerts after 4 seconds
   setTimeout(() => {
     const alert = document.querySelector('.alert');
     if (alert) {
@@ -174,6 +512,62 @@
       setTimeout(() => alert.remove(), 500);
     }
   }, 4000);
+
+  // Enable tab navigation via URL
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get tab from URL or activate first tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    if (tabParam) {
+      const tabToActivate = document.querySelector(`#${tabParam}-tab`);
+      if (tabToActivate) {
+        new bootstrap.Tab(tabToActivate).show();
+      }
+    }
+    
+    // Update URL when tab changes
+    const tabLinks = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabLinks.forEach(tabLink => {
+      tabLink.addEventListener('shown.bs.tab', function (event) {
+        const tabId = event.target.id.replace('-tab', '');
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('tab', tabId);
+        history.pushState({}, '', newUrl);
+      });
+    });
+    
+    // Settings search functionality
+    const searchInput = document.getElementById('settingsSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        filterSettingsContent(searchTerm);
+      });
+    }
+  });
+  
+  function filterSettingsContent(searchTerm) {
+    if (!searchTerm) {
+      // Reset visibility of all elements
+      document.querySelectorAll('tr, .card').forEach(el => {
+        el.style.display = '';
+      });
+      return;
+    }
+    
+    // Filter table rows
+    document.querySelectorAll('tbody tr').forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+    
+    // Filter cards in profile tab
+    document.querySelectorAll('#profile .card').forEach(card => {
+      const text = card.textContent.toLowerCase();
+      card.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+  }
 </script>
 </body>
 </html>
