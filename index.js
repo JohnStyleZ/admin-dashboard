@@ -226,7 +226,7 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
      ORDER BY p.participant_id`
   );
 
-  // Get sessions with counts
+  // Get sessions with counts - don't limit to 20
   const sessionsRes = await pool.query(
     `SELECT s.*, 
             l.name as location_name, 
@@ -235,9 +235,8 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
      FROM sessions s
      LEFT JOIN locations l ON s.location_id = l.location_id
      LEFT JOIN participant_sessions ps ON s.session_id = ps.session_id
-     GROUP BY s.session_id, l.name
-     ORDER BY s.start_time DESC
-     LIMIT 20`
+     GROUP BY s.session_id, l.name, s.start_time, s.started_by
+     ORDER BY s.start_time DESC`
   );
 
   // Get rate settings for selected location
@@ -489,9 +488,12 @@ app.post('/admin/settings/create-session', requireAdmin, async (req, res) => {
       throw new Error('Invalid date or time format');
     }
     
+    // Get admin name
+    const adminName = req.session.admin.username || 'Admin';
+    
     await pool.query(
-      'INSERT INTO sessions (location_id, start_time, room_number) VALUES ($1, $2, $3)',
-      [location_id, timestamp, room_number || null]
+      'INSERT INTO sessions (location_id, start_time, room_number, started_by) VALUES ($1, $2, $3, $4)',
+      [location_id, timestamp, room_number || null, adminName]
     );
     
     req.session.message = 'Session created successfully!';
@@ -959,6 +961,24 @@ async function initializeDatabase() {
       `);
     }
     
+    // Check if started_by column exists in sessions table
+    const startedByCheckResult = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'sessions' AND column_name = 'started_by'
+    `);
+    
+    const hasStartedBy = startedByCheckResult.rows.length > 0;
+    
+    // Add started_by column if it doesn't exist
+    if (!hasStartedBy) {
+      console.log('Adding started_by column to sessions table');
+      await client.query(`
+        ALTER TABLE sessions
+        ADD COLUMN started_by TEXT
+      `);
+    }
+    
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {
@@ -1272,4 +1292,32 @@ app.get('/api/sessions/:id/all-participants', async (req, res) => {
     console.error("Error fetching all participants:", err);
     res.status(500).json({ error: "Failed to fetch participants" });
   }
+});
+
+// --- Update Session ---
+app.post('/admin/settings/update-session/:session_id', requireAdmin, async (req, res) => {
+  const { session_id } = req.params;
+  const { date, time, location_id, room_number, started_by } = req.body;
+  
+  try {
+    // Combine date and time into timestamp
+    const dateTimeStr = `${date}T${time}:00`;
+    const timestamp = new Date(dateTimeStr);
+    
+    if (isNaN(timestamp.getTime())) {
+      throw new Error('Invalid date or time format');
+    }
+    
+    await pool.query(
+      'UPDATE sessions SET location_id = $1, start_time = $2, room_number = $3, started_by = $4 WHERE session_id = $5',
+      [location_id, timestamp, room_number || null, started_by || null, session_id]
+    );
+    
+    req.session.message = 'Session updated successfully!';
+  } catch (err) {
+    console.error('Failed to update session:', err);
+    req.session.message = 'Failed to update session: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=sessions');
 });

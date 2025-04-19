@@ -375,35 +375,42 @@
                   <th>Date & Time</th>
                   <th>Location</th>
                   <th>Room</th>
+                  <th>Started By</th>
                   <th>Participants</th>
                   <th>Revenue</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <% for(let i = 0; i < 5; i++) { 
-                  const fakeDate = new Date();
-                  fakeDate.setDate(fakeDate.getDate() - i);
-                %>
-                <tr>
-                  <td>#<%= 100 + i %></td>
-                  <td><%= fakeDate.toLocaleDateString() %> <%= fakeDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></td>
-                  <td><%= locations[i % locations.length].name %></td>
-                  <td>Room <%= Math.floor(Math.random() * 10) + 1 %></td>
-                  <td><span class="badge bg-primary"><%= Math.floor(Math.random() * 15) + 5 %></span></td>
-                  <td>$<%= (Math.random() * 200 + 100).toFixed(2) %></td>
-                  <td class="action-buttons">
-                    <button type="button" class="btn btn-sm btn-info">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-warning">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-danger">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </td>
-                </tr>
+                <% if (sessions && sessions.length > 0) { %>
+                  <% sessions.forEach(session => { 
+                    const sessionDate = new Date(session.start_time);
+                  %>
+                    <tr>
+                      <td>#<%= session.session_id %></td>
+                      <td><%= sessionDate.toLocaleDateString() %> <%= sessionDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></td>
+                      <td><%= session.location_name || 'Unknown' %></td>
+                      <td><%= session.room_number || '-' %></td>
+                      <td><%= session.started_by || '-' %></td>
+                      <td><span class="badge bg-primary"><%= session.participant_count || 0 %></span></td>
+                      <td>$<%= parseFloat(session.revenue || 0).toFixed(2) %></td>
+                      <td class="action-buttons">
+                        <button type="button" class="btn btn-sm btn-info view-session" data-session-id="<%= session.session_id %>">
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-warning edit-session" data-session-id="<%= session.session_id %>">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger delete-session" data-session-id="<%= session.session_id %>">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  <% }); %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="8" class="text-center py-4">No sessions found. Create your first session!</td>
+                  </tr>
                 <% } %>
               </tbody>
             </table>
@@ -490,6 +497,12 @@
           <div class="mb-3">
             <label for="sessionRoom" class="form-label">Room Number</label>
             <input type="text" class="form-control" id="sessionRoom" name="room_number">
+          </div>
+          <div class="mb-3">
+            <p class="text-muted small">
+              <i class="bi bi-info-circle"></i> 
+              This session will be recorded as started by <strong><%= admin.username %></strong>
+            </p>
           </div>
         </div>
         <div class="modal-footer">
@@ -616,6 +629,119 @@
   </div>
 <% }); %>
 
+<!-- Session Modals -->
+<% if (sessions && sessions.length > 0) { %>
+  <% sessions.forEach(session => { 
+    const sessionDate = new Date(session.start_time);
+  %>
+    <!-- View Session Modal -->
+    <div class="modal fade" id="viewSessionModal<%= session.session_id %>" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Session Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-6">
+                <h6 class="fw-bold mb-3">Session Information</h6>
+                <p><strong>ID:</strong> #<%= session.session_id %></p>
+                <p><strong>Date:</strong> <%= sessionDate.toLocaleDateString() %></p>
+                <p><strong>Time:</strong> <%= sessionDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></p>
+                <p><strong>Location:</strong> <%= session.location_name || 'Unknown' %></p>
+                <p><strong>Room:</strong> <%= session.room_number || 'Not specified' %></p>
+                <p><strong>Started By:</strong> <%= session.started_by || 'Not recorded' %></p>
+              </div>
+              <div class="col-md-6">
+                <h6 class="fw-bold mb-3">Participation</h6>
+                <p><strong>Participants:</strong> <%= session.participant_count || 0 %></p>
+                <p><strong>Revenue:</strong> $<%= parseFloat(session.revenue || 0).toFixed(2) %></p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Session Modal -->
+    <div class="modal fade" id="editSessionModal<%= session.session_id %>" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Session</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form action="/admin/settings/update-session/<%= session.session_id %>" method="POST">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="editSessionDate<%= session.session_id %>" class="form-label">Date</label>
+                <input type="date" class="form-control" id="editSessionDate<%= session.session_id %>" name="date" 
+                     value="<%= sessionDate.toISOString().split('T')[0] %>" required>
+              </div>
+              <div class="mb-3">
+                <label for="editSessionTime<%= session.session_id %>" class="form-label">Time</label>
+                <input type="time" class="form-control" id="editSessionTime<%= session.session_id %>" name="time" 
+                     value="<%= sessionDate.toTimeString().split(' ')[0].substring(0, 5) %>" required>
+              </div>
+              <div class="mb-3">
+                <label for="editSessionLocation<%= session.session_id %>" class="form-label">Location</label>
+                <select class="form-select" id="editSessionLocation<%= session.session_id %>" name="location_id" required>
+                  <% locations.forEach(loc => { %>
+                    <option value="<%= loc.location_id %>" <%= loc.location_id == session.location_id ? 'selected' : '' %>>
+                      <%= loc.name %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="editSessionRoom<%= session.session_id %>" class="form-label">Room Number</label>
+                <input type="text" class="form-control" id="editSessionRoom<%= session.session_id %>" name="room_number" 
+                     value="<%= session.room_number || '' %>">
+              </div>
+              <div class="mb-3">
+                <label for="editSessionStartedBy<%= session.session_id %>" class="form-label">Started By</label>
+                <input type="text" class="form-control" id="editSessionStartedBy<%= session.session_id %>" name="started_by" 
+                     value="<%= session.started_by || '' %>">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Session Modal -->
+    <div class="modal fade" id="deleteSessionModal<%= session.session_id %>" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Deletion</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to delete session #<%= session.session_id %>?</p>
+            <p>This will remove all participant data associated with this session.</p>
+            <p class="text-danger"><strong>Warning:</strong> This action cannot be undone!</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <form action="/admin/settings/delete-session/<%= session.session_id %>" method="POST">
+              <button type="submit" class="btn btn-danger">Delete Session</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% }); %>
+<% } %>
+
 <!-- Connect Quick Action Buttons -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -674,28 +800,30 @@
       });
     }
 
-    // Handle session actions
-    const sessionTable = document.querySelector('#sessions table');
-    if (sessionTable) {
-      sessionTable.addEventListener('click', function(e) {
-        const target = e.target.closest('button');
-        if (!target) return;
-        
-        const row = target.closest('tr');
-        const sessionId = row.querySelector('td:first-child').textContent.replace('#', '');
-        
-        if (target.classList.contains('btn-danger')) {
-          if (confirm('Are you sure you want to delete this session?')) {
-            // Create and submit a form to delete the session
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/admin/settings/delete-session/${sessionId}`;
-            document.body.appendChild(form);
-            form.submit();
-          }
-        }
+    // Session action buttons
+    document.querySelectorAll('.view-session').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const sessionId = this.getAttribute('data-session-id');
+        const modal = new bootstrap.Modal(document.getElementById(`viewSessionModal${sessionId}`));
+        modal.show();
       });
-    }
+    });
+    
+    document.querySelectorAll('.edit-session').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const sessionId = this.getAttribute('data-session-id');
+        const modal = new bootstrap.Modal(document.getElementById(`editSessionModal${sessionId}`));
+        modal.show();
+      });
+    });
+    
+    document.querySelectorAll('.delete-session').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const sessionId = this.getAttribute('data-session-id');
+        const modal = new bootstrap.Modal(document.getElementById(`deleteSessionModal${sessionId}`));
+        modal.show();
+      });
+    });
     
     // Connect dashboard buttons to modals in settings tab
     document.querySelectorAll('.quick-action-btn').forEach(btn => {
