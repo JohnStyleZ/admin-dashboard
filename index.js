@@ -232,7 +232,7 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
             l.name as location_name, 
             starter.name as starter_name,
             COUNT(ps.participant_id) as participant_count,
-            SUM(ps.adjusted_cost) as revenue
+            SUM(ps.adjusted_cost) as cost
      FROM sessions s
      LEFT JOIN locations l ON s.location_id = l.location_id
      LEFT JOIN participants starter ON s.started_by = starter.participant_id

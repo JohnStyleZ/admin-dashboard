@@ -377,7 +377,7 @@
                   <th>Room</th>
                   <th>Started By</th>
                   <th>Participants</th>
-                  <th>Revenue</th>
+                  <th>Cost</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -393,7 +393,7 @@
                       <td><%= session.room_number || '-' %></td>
                       <td><%= session.starter_name || '-' %></td>
                       <td><span class="badge bg-primary"><%= session.participant_count || 0 %></span></td>
-                      <td>$<%= parseFloat(session.revenue || 0).toFixed(2) %></td>
+                      <td>$<%= parseFloat(session.cost || 0).toFixed(2) %></td>
                       <td class="action-buttons">
                         <button type="button" class="btn btn-sm btn-info view-session" data-session-id="<%= session.session_id %>">
                           <i class="bi bi-eye"></i>
@@ -659,7 +659,7 @@
               <div class="col-md-6">
                 <h6 class="fw-bold mb-3">Participation</h6>
                 <p><strong>Participants:</strong> <%= session.participant_count || 0 %></p>
-                <p><strong>Revenue:</strong> $<%= parseFloat(session.revenue || 0).toFixed(2) %></p>
+                <p><strong>Cost:</strong> $<%= parseFloat(session.cost || 0).toFixed(2) %></p>
               </div>
             </div>
             
@@ -673,7 +673,7 @@
                       <th>Gender</th>
                       <th>Join Time</th>
                       <th>Leave Time</th>
-                      <th>Revenue</th>
+                      <th>Cost</th>
                     </tr>
                   </thead>
                   <tbody>

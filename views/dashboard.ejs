@@ -117,7 +117,7 @@
     </div>
     <div class="card stat-card bg-warning text-white">
       <div class="icon"><i class="bi bi-wallet2"></i></div>
-      <p>Total Revenue</p>
+      <p>Total Cost</p>
       <h3>$<%= totalSpent %></h3>
     </div>
   </div>
@@ -141,7 +141,7 @@
 
       <div class="card p-4 shadow-sm mt-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0"><i class="bi bi-graph-up"></i> Daily Revenue</h5>
+          <h5 class="mb-0"><i class="bi bi-graph-up"></i> Daily Cost</h5>
           <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
         </div>
         <canvas id="trendChart" height="100"></canvas>
@@ -353,7 +353,7 @@
       data: {
         labels: labels,
         datasets: [{
-          label: 'Daily Revenue ($)',
+          label: 'Daily Cost ($)',
           data: values,
           borderColor: 'rgba(75, 192, 192, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',

@@ -5,77 +5,197 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Analytics</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; }
+    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; z-index: 100; }
     .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
     .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
+    .sidebar a i { margin-right: 10px; }
     .main { margin-left: 250px; padding: 30px; }
-    .card { border: none; border-radius: 10px; }
+    .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .summary-card { height: 100%; transition: all 0.2s; }
+    .summary-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+    .summary-value { font-size: 2rem; font-weight: bold; }
   </style>
 </head>
 <body>
 <div class="sidebar">
-  <h2>Admin Panel</h2>
-  <a href="/admin/dashboard">Dashboard</a>
-  <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
-  <a href="/admin/reports" class="<%= title === 'Reports' ? 'active' : '' %>">Reports</a>
-  <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
-  <a href="/admin/logout">Logout</a>
+  <h2><i class="bi bi-speedometer2"></i> Admin Panel</h2>
+  <a href="/admin/dashboard"><i class="bi bi-house-door"></i> Dashboard</a>
+  <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>"><i class="bi bi-bar-chart"></i> Analytics</a>
+  <a href="/admin/reports" class="<%= title === 'Reports' ? 'active' : '' %>"><i class="bi bi-file-text"></i> Reports</a>
+  <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>"><i class="bi bi-gear"></i> Settings</a>
+  <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
 <div class="main p-4">
-  <h2 class="mb-4">📊 Analytics</h2>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-bar-chart"></i> Analytics</h2>
+    <div class="btn-group">
+      <button class="btn btn-outline-primary" id="thisMonth">This Month</button>
+      <button class="btn btn-outline-primary" id="last3Months">Last 3 Months</button>
+      <button class="btn btn-outline-primary active" id="allTime">All Time</button>
+    </div>
+  </div>
+
+  <!-- Summary Cards Row -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card p-3 summary-card bg-primary bg-opacity-10">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="mb-0 text-primary">Total Sessions</p>
+            <div class="summary-value"><%= totalSessionsCount || 0 %></div>
+          </div>
+          <i class="bi bi-calendar2-event text-primary fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3 summary-card bg-success bg-opacity-10">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="mb-0 text-success">Average Cost</p>
+            <div class="summary-value">$<%= avgCostPerSession?.toFixed(2) || '0.00' %></div>
+          </div>
+          <i class="bi bi-currency-dollar text-success fs-1 opacity-25"></i>
+        </div>
+        <small>per session</small>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3 summary-card bg-info bg-opacity-10">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="mb-0 text-info">Average Duration</p>
+            <div class="summary-value"><%= avgDuration || '0' %></div>
+          </div>
+          <i class="bi bi-hourglass-split text-info fs-1 opacity-25"></i>
+        </div>
+        <small>hours per session</small>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3 summary-card bg-warning bg-opacity-10">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="mb-0 text-warning">Cost Per Person</p>
+            <div class="summary-value">$<%= avgCostPerPerson?.toFixed(2) || '0.00' %></div>
+          </div>
+          <i class="bi bi-person-fill text-warning fs-1 opacity-25"></i>
+        </div>
+        <small>average</small>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-4">
+    <!-- Cost Over Time -->
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>⏰ Peak Participation Hour</h5>
-        <div style="height: 250px; display: flex; justify-content: center; align-items: center;"><canvas id="peakHourChart"></canvas></div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-graph-up"></i> Spending Over Time</h5>
+          <select id="timeFrameSelect" class="form-select form-select-sm w-auto">
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="quarterly">Quarterly</option>
+          </select>
+        </div>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="spendingTimeChart"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Cost Per Person Distribution -->
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>⏱️ Duration Distribution</h5>
-        <div style="height: 250px; display: flex; justify-content: center; align-items: center;"><canvas id="durationChart"></canvas></div>
+        <h5 class="mb-0"><i class="bi bi-cash-coin"></i> Cost Per Person Distribution</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="costDistributionChart"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Weekday Analysis -->
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>👥 Group Size Categories</h5>
-        <div style="height: 250px; display: flex; justify-content: center; align-items: center;"><canvas id="groupSizeChart"></canvas></div>
+        <h5><i class="bi bi-calendar-week"></i> Weekday Analysis</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="weekdayChart"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Session Duration vs Cost -->
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>👩‍🦰 Gender Participation Over Time</h5>
-        <div style="height: 250px; display: flex; justify-content: center; align-items: center;"><canvas id="genderTrendChart"></canvas></div>
+        <h5><i class="bi bi-hourglass-split"></i> Session Duration vs Cost</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="durationCostChart"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Top Locations -->
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>📆 Sessions Per Month</h5>
-        <div style="height: 250px; display: flex; justify-content: center; align-items: center;"><canvas id="sessionsMonthChart"></canvas></div>
+        <h5><i class="bi bi-geo-alt"></i> Top Locations by Usage</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="locationsChart"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Group Size Impact -->
     <div class="col-md-6">
       <div class="card p-3 shadow-sm">
-        <h5>💰 Total Spending Per Month</h5>
-        <div style="height: 250px; display: flex; justify-content: center; align-items: center;"><canvas id="spendingMonthChart"></canvas></div>
+        <h5><i class="bi bi-people"></i> Group Size Impact on Cost</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="groupSizeCostChart"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Peak Hours -->
+    <div class="col-md-6">
+      <div class="card p-3 shadow-sm">
+        <h5><i class="bi bi-clock"></i> Peak Usage Hours</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="peakHoursChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cost Savings Analysis -->
+    <div class="col-md-6">
+      <div class="card p-3 shadow-sm">
+        <h5><i class="bi bi-piggy-bank"></i> Potential Cost Savings</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="savingsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seasonal Trends -->
     <div class="col-md-12">
       <div class="card p-3 shadow-sm">
-        <h5>👤 New vs Returning Participants</h5>
-        <div style="height: 300px; display: flex; justify-content: center; align-items: center;"><canvas id="returnChart"></canvas></div>
+        <h5><i class="bi bi-calendar3"></i> Seasonal Cost Trends</h5>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+          <canvas id="seasonalTrendsChart"></canvas>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  // Sample data - in production these would come from the server
   const peakData = <%- JSON.stringify(peakHours) %>;
   const durationData = <%- JSON.stringify(durationBuckets) %>;
   const groupSizeData = <%- JSON.stringify(groupSizes) %>;
@@ -84,81 +204,297 @@
   const sessionsPerMonth = <%- JSON.stringify(sessionsPerMonth) %>;
   const spendingPerMonth = <%- JSON.stringify(spendingPerMonth) %>;
 
-  new Chart(document.getElementById('peakHourChart'), {
-    type: 'bar',
-    data: {
-      labels: peakData.map(r => `${r.hour}:00`),
-      datasets: [{ label: 'Participants', data: peakData.map(r => parseInt(r.total || 0)), backgroundColor: '#0d6efd' }]
-    }
-  });
+  // Create months array for charts
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentMonth = new Date().getMonth();
+  
+  // Sample data for new charts (would be server-provided in production)
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const weekdayData = [15, 8, 12, 25, 32, 48, 40]; // Sample counts
+  const weekdayCosts = [320, 210, 280, 450, 560, 820, 780]; // Sample costs
+  
+  const locationData = {
+    labels: ['Studio 1', 'VIP Room', 'Main Hall', 'Standard Room', 'Deluxe Room'],
+    counts: [42, 38, 27, 22, 18],
+    costs: [2800, 3400, 1900, 1200, 1600]
+  };
+  
+  const groupSizes = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const costPerPerson = [36, 32, 28, 25, 23, 21, 19, 18, 17]; // Cost decreases with larger groups
+  
+  const hourlyData = {
+    labels: Array.from({length: 14}, (_, i) => `${i+10}:00`), // 10 AM to 11 PM
+    counts: [5, 8, 12, 15, 22, 35, 48, 52, 58, 48, 32, 25, 15, 8]
+  };
+  
+  const seasonalTrends = {
+    labels: months,
+    costs: [2800, 2400, 2600, 2900, 3200, 3800, 4100, 4200, 3800, 3500, 3200, 3600]
+  };
+  
+  const durationVsCost = {
+    durations: [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
+    costs: [80, 120, 160, 200, 240, 280, 320, 360, 400]
+  };
+  
+  const costDistribution = {
+    ranges: ['$0-10', '$10-20', '$20-30', '$30-40', '$40-50', '$50+'],
+    counts: [15, 28, 42, 35, 22, 8]
+  };
+  
+  const savingsAnalysis = {
+    categories: ['Peak vs Off-Peak', 'Weekday vs Weekend', 'Group Size Optimization', 'Duration Planning', 'Location Choice'],
+    potential: [25, 20, 15, 10, 8] // Percentage of potential savings
+  };
 
-  new Chart(document.getElementById('durationChart'), {
-    type: 'bar',
-    data: {
-      labels: durationData.map(r => `Bucket ${r.bucket}`),
-      datasets: [{ label: 'People', data: durationData.map(r => parseInt(r.total || 0)), backgroundColor: '#6f42c1' }]
-    }
-  });
-
-  new Chart(document.getElementById('groupSizeChart'), {
-    type: 'pie',
-    data: {
-      labels: groupSizeData.map(r => r.size_category),
-      datasets: [{ data: groupSizeData.map(r => parseInt(r.total_sessions || 0)), backgroundColor: ['#0d6efd', '#ffc107', '#dc3545'] }]
-    }
-  });
-
-  const months = [...new Set(genderTrends.map(r => r.month))];
-  const genders = ['Male', 'Female'];
-  const trendData = genders.map(g => ({
-    label: g,
-    data: months.map(m => {
-      const row = genderTrends.find(r => r.month === m && r.gender === g);
-      return row ? parseInt(row.total || 0) : 0;
-    }),
-    borderColor: g === 'Male' ? '#0d6efd' : '#e83e8c',
-    fill: false
-  }));
-
-  new Chart(document.getElementById('genderTrendChart'), {
+  // Render the charts
+  new Chart(document.getElementById('spendingTimeChart'), {
     type: 'line',
-    data: { labels: months, datasets: trendData }
-  });
-
-  const returnMonths = [...new Set(returnData.map(r => r.month))];
-  const types = ['New', 'Returning'];
-  const returnDatasets = types.map(t => ({
-    label: t,
-    data: returnMonths.map(m => {
-      const row = returnData.find(r => r.month === m && r.type === t);
-      return row ? parseInt(row.total || 0) : 0;
-    }),
-    backgroundColor: t === 'New' ? '#198754' : '#6c757d'
-  }));
-
-  new Chart(document.getElementById('returnChart'), {
-    type: 'bar',
-    data: { labels: returnMonths, datasets: returnDatasets },
-    options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }
-  });
-
-  new Chart(document.getElementById('sessionsMonthChart'), {
-    type: 'bar',
-    data: {
-      labels: sessionsPerMonth.map(r => r.month),
-      datasets: [{ label: 'Sessions', data: sessionsPerMonth.map(r => parseInt(r.total_sessions || 0)), backgroundColor: '#0dcaf0' }]
-    }
-  });
-
-  new Chart(document.getElementById('spendingMonthChart'), {
-    type: 'bar',
     data: {
       labels: spendingPerMonth.map(r => r.month),
-      datasets: [{ label: 'Total Spent ($)', data: spendingPerMonth.map(r => parseFloat(r.total_spent || 0)), backgroundColor: '#fd7e14' }]
+      datasets: [{ 
+        label: 'Total Spent ($)',
+        data: spendingPerMonth.map(r => parseFloat(r.total_spent || 0)),
+        borderColor: '#fd7e14',
+        backgroundColor: 'rgba(253, 126, 20, 0.1)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      }
     }
   });
+
+  new Chart(document.getElementById('weekdayChart'), {
+    type: 'bar',
+    data: {
+      labels: weekdays,
+      datasets: [
+        {
+          label: 'Sessions',
+          data: weekdayData,
+          backgroundColor: 'rgba(13, 110, 253, 0.5)',
+          borderColor: '#0d6efd',
+          borderWidth: 1,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Average Cost ($)',
+          data: weekdayCosts.map((cost, i) => cost / weekdayData[i]).map(cost => parseFloat(cost.toFixed(2))),
+          backgroundColor: 'rgba(220, 53, 69, 0.5)',
+          borderColor: '#dc3545',
+          borderWidth: 1,
+          type: 'line',
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: 'Session Count' }
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: 'Avg Cost per Person ($)' },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('locationsChart'), {
+    type: 'bar',
+    data: {
+      labels: locationData.labels,
+      datasets: [{
+        label: 'Sessions',
+        data: locationData.counts,
+        backgroundColor: 'rgba(32, 201, 151, 0.5)'
+      }, {
+        label: 'Total Cost ($)',
+        data: locationData.costs,
+        backgroundColor: 'rgba(13, 202, 240, 0.5)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('groupSizeCostChart'), {
+    type: 'line',
+    data: {
+      labels: groupSizes,
+      datasets: [{
+        label: 'Cost Per Person ($)',
+        data: costPerPerson,
+        borderColor: '#20c997',
+        backgroundColor: 'rgba(32, 201, 151, 0.1)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Group Size (people)' } },
+        y: { title: { display: true, text: 'Cost Per Person ($)' } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('peakHoursChart'), {
+    type: 'bar',
+    data: {
+      labels: hourlyData.labels,
+      datasets: [{
+        label: 'Session Count',
+        data: hourlyData.counts,
+        backgroundColor: 'rgba(111, 66, 193, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  new Chart(document.getElementById('seasonalTrendsChart'), {
+    type: 'line',
+    data: {
+      labels: seasonalTrends.labels,
+      datasets: [{
+        label: 'Monthly Spending ($)',
+        data: seasonalTrends.costs,
+        borderColor: '#fd7e14',
+        backgroundColor: 'rgba(253, 126, 20, 0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  new Chart(document.getElementById('durationCostChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Sessions',
+        data: durationVsCost.durations.map((duration, i) => ({
+          x: duration,
+          y: durationVsCost.costs[i]
+        })),
+        backgroundColor: 'rgba(13, 110, 253, 0.7)',
+        borderColor: '#0d6efd',
+        pointRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { 
+          title: { display: true, text: 'Duration (hours)' },
+          min: 0
+        },
+        y: { 
+          title: { display: true, text: 'Cost ($)' },
+          min: 0
+        }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('costDistributionChart'), {
+    type: 'bar',
+    data: {
+      labels: costDistribution.ranges,
+      datasets: [{
+        label: 'Number of People',
+        data: costDistribution.counts,
+        backgroundColor: 'rgba(32, 201, 151, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Cost Range per Person' } },
+        y: { title: { display: true, text: 'Number of People' } }
+      }
+    }
+  });
+
+  // Savings analysis chart
+  const savingsContext = document.getElementById('savingsChart');
+  if (savingsContext) {
+    new Chart(savingsContext, {
+      type: 'bar',
+      data: {
+        labels: savingsAnalysis.categories,
+        datasets: [{
+          label: 'Potential Savings (%)',
+          data: savingsAnalysis.potential,
+          backgroundColor: [
+            'rgba(13, 110, 253, 0.7)',
+            'rgba(220, 53, 69, 0.7)',
+            'rgba(255, 193, 7, 0.7)',
+            'rgba(32, 201, 151, 0.7)',
+            'rgba(13, 202, 240, 0.7)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  // Time period selectors
+  document.getElementById('thisMonth').addEventListener('click', function() {
+    this.classList.add('active');
+    document.getElementById('last3Months').classList.remove('active');
+    document.getElementById('allTime').classList.remove('active');
+    // Filter data by this month (would update charts with filtered data)
+  });
+
+  document.getElementById('last3Months').addEventListener('click', function() {
+    this.classList.add('active');
+    document.getElementById('thisMonth').classList.remove('active');
+    document.getElementById('allTime').classList.remove('active');
+    // Filter data by last 3 months
+  });
+
+  document.getElementById('allTime').addEventListener('click', function() {
+    this.classList.add('active');
+    document.getElementById('thisMonth').classList.remove('active');
+    document.getElementById('last3Months').classList.remove('active');
+    // Show all data
+  });
+
+  // Time frame selector for spending chart
+  document.getElementById('timeFrameSelect').addEventListener('change', function() {
+    // Would update chart based on selected time frame
+  });
 </script>
-
-
 </body>
 </html>
