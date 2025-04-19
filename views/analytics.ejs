@@ -203,49 +203,26 @@
   const returnData = <%- JSON.stringify(newVsReturning || []) %>;
   const sessionsPerMonth = <%- JSON.stringify(sessionsPerMonth || []) %>;
   const spendingPerMonth = <%- JSON.stringify(spendingPerMonth || []) %>;
+  const weekdayData = <%- JSON.stringify(weekdayAnalysis || []) %>;
+  const costDistributionData = <%- JSON.stringify(costDistribution || []) %>;
+  const locationData = <%- JSON.stringify(locationUsage || []) %>;
+  const groupSizeCostData = <%- JSON.stringify(groupSizeCost || []) %>;
+  const durationCostData = <%- JSON.stringify(durationCost || []) %>;
+  const seasonalTrendsData = <%- JSON.stringify(seasonalTrends || []) %>;
 
   // Create months array for charts
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentMonth = new Date().getMonth();
   
-  // Sample data for new charts (would be server-provided in production)
-  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const weekdayData = [15, 8, 12, 25, 32, 48, 40]; // Sample counts
-  const weekdayCosts = [320, 210, 280, 450, 560, 820, 780]; // Sample costs
+  // Convert weekday numbers to names
+  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   
-  const locationData = {
-    labels: ['Studio 1', 'VIP Room', 'Main Hall', 'Standard Room', 'Deluxe Room'],
-    counts: [42, 38, 27, 22, 18],
-    costs: [2800, 3400, 1900, 1200, 1600]
-  };
-  
-  const groupSizes = [2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const costPerPerson = [36, 32, 28, 25, 23, 21, 19, 18, 17]; // Cost decreases with larger groups
-  
-  const hourlyData = {
-    labels: Array.from({length: 14}, (_, i) => `${i+10}:00`), // 10 AM to 11 PM
-    counts: [5, 8, 12, 15, 22, 35, 48, 52, 58, 48, 32, 25, 15, 8]
-  };
-  
-  const seasonalTrends = {
-    labels: months,
-    costs: [2800, 2400, 2600, 2900, 3200, 3800, 4100, 4200, 3800, 3500, 3200, 3600]
-  };
-  
-  const durationVsCost = {
-    durations: [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
-    costs: [80, 120, 160, 200, 240, 280, 320, 360, 400]
-  };
-  
-  const costDistribution = {
-    ranges: ['$0-10', '$10-20', '$20-30', '$30-40', '$40-50', '$50+'],
-    counts: [15, 28, 42, 35, 22, 8]
-  };
-  
-  const savingsAnalysis = {
-    categories: ['Peak vs Off-Peak', 'Weekday vs Weekend', 'Group Size Optimization', 'Duration Planning', 'Location Choice'],
-    potential: [25, 20, 15, 10, 8] // Percentage of potential savings
-  };
+  // Format cost distribution labels
+  function formatCostRange(bucket) {
+    const min = (bucket - 1) * 10;
+    const max = bucket * 10;
+    return `$${min}-${max}`;
+  }
 
   // Render the charts
   new Chart(document.getElementById('spendingTimeChart'), {
@@ -273,11 +250,11 @@
   new Chart(document.getElementById('weekdayChart'), {
     type: 'bar',
     data: {
-      labels: weekdays,
+      labels: weekdayData.map(d => weekdayNames[parseInt(d.day_of_week)]),
       datasets: [
         {
           label: 'Sessions',
-          data: weekdayData,
+          data: weekdayData.map(d => parseInt(d.session_count)),
           backgroundColor: 'rgba(13, 110, 253, 0.5)',
           borderColor: '#0d6efd',
           borderWidth: 1,
@@ -285,7 +262,11 @@
         },
         {
           label: 'Average Cost ($)',
-          data: weekdayCosts.map((cost, i) => cost / weekdayData[i]).map(cost => parseFloat(cost.toFixed(2))),
+          data: weekdayData.map(d => {
+            const sessionCount = parseInt(d.session_count);
+            const totalCost = parseFloat(d.total_cost);
+            return sessionCount > 0 ? parseFloat((totalCost / sessionCount).toFixed(2)) : 0;
+          }),
           backgroundColor: 'rgba(220, 53, 69, 0.5)',
           borderColor: '#dc3545',
           borderWidth: 1,
@@ -305,7 +286,7 @@
         y1: {
           type: 'linear',
           position: 'right',
-          title: { display: true, text: 'Avg Cost per Person ($)' },
+          title: { display: true, text: 'Avg Cost per Session ($)' },
           grid: { drawOnChartArea: false }
         }
       }
@@ -315,14 +296,14 @@
   new Chart(document.getElementById('locationsChart'), {
     type: 'bar',
     data: {
-      labels: locationData.labels,
+      labels: locationData.map(r => r.name),
       datasets: [{
         label: 'Sessions',
-        data: locationData.counts,
+        data: locationData.map(r => parseInt(r.session_count)),
         backgroundColor: 'rgba(32, 201, 151, 0.5)'
       }, {
         label: 'Total Cost ($)',
-        data: locationData.costs,
+        data: locationData.map(r => parseFloat(r.total_cost)),
         backgroundColor: 'rgba(13, 202, 240, 0.5)',
         borderWidth: 1
       }]
@@ -338,10 +319,10 @@
   new Chart(document.getElementById('groupSizeCostChart'), {
     type: 'line',
     data: {
-      labels: groupSizes,
+      labels: groupSizeCostData.map(r => parseInt(r.group_size)),
       datasets: [{
         label: 'Cost Per Person ($)',
-        data: costPerPerson,
+        data: groupSizeCostData.map(r => parseFloat(r.avg_cost_per_person).toFixed(2)),
         borderColor: '#20c997',
         backgroundColor: 'rgba(32, 201, 151, 0.1)',
         fill: true,
@@ -361,10 +342,10 @@
   new Chart(document.getElementById('peakHoursChart'), {
     type: 'bar',
     data: {
-      labels: hourlyData.labels,
+      labels: peakData.map(d => `${d.hour}:00`),
       datasets: [{
         label: 'Session Count',
-        data: hourlyData.counts,
+        data: peakData.map(d => parseInt(d.total)),
         backgroundColor: 'rgba(111, 66, 193, 0.7)'
       }]
     },
@@ -377,10 +358,10 @@
   new Chart(document.getElementById('seasonalTrendsChart'), {
     type: 'line',
     data: {
-      labels: seasonalTrends.labels,
+      labels: seasonalTrendsData.map(d => months[parseInt(d.month) - 1]),
       datasets: [{
         label: 'Monthly Spending ($)',
-        data: seasonalTrends.costs,
+        data: seasonalTrendsData.map(d => parseFloat(d.total_cost)),
         borderColor: '#fd7e14',
         backgroundColor: 'rgba(253, 126, 20, 0.1)',
         fill: true,
@@ -398,9 +379,9 @@
     data: {
       datasets: [{
         label: 'Sessions',
-        data: durationVsCost.durations.map((duration, i) => ({
-          x: duration,
-          y: durationVsCost.costs[i]
+        data: durationCostData.map(d => ({
+          x: parseFloat(d.duration_hours),
+          y: parseFloat(d.adjusted_cost)
         })),
         backgroundColor: 'rgba(13, 110, 253, 0.7)',
         borderColor: '#0d6efd',
@@ -425,10 +406,10 @@
   new Chart(document.getElementById('costDistributionChart'), {
     type: 'bar',
     data: {
-      labels: costDistribution.ranges,
+      labels: costDistributionData.map(d => formatCostRange(parseInt(d.cost_bucket))),
       datasets: [{
         label: 'Number of People',
-        data: costDistribution.counts,
+        data: costDistributionData.map(d => parseInt(d.count)),
         backgroundColor: 'rgba(32, 201, 151, 0.7)'
       }]
     },
@@ -442,32 +423,34 @@
     }
   });
 
-  // Savings analysis chart
-  const savingsContext = document.getElementById('savingsChart');
-  if (savingsContext) {
-    new Chart(savingsContext, {
-      type: 'bar',
-      data: {
-        labels: savingsAnalysis.categories,
-        datasets: [{
-          label: 'Potential Savings (%)',
-          data: savingsAnalysis.potential,
-          backgroundColor: [
-            'rgba(13, 110, 253, 0.7)',
-            'rgba(220, 53, 69, 0.7)',
-            'rgba(255, 193, 7, 0.7)',
-            'rgba(32, 201, 151, 0.7)',
-            'rgba(13, 202, 240, 0.7)'
-          ]
-        }]
-      },
-      options: {
-        responsive: true,
-        indexAxis: 'y',
-        plugins: { legend: { display: false } }
-      }
-    });
-  }
+  // Create savings analysis chart with static data since this is calculated advice
+  const savingsAnalysis = {
+    categories: ['Peak vs Off-Peak', 'Weekday vs Weekend', 'Group Size Optimization', 'Duration Planning', 'Location Choice'],
+    potential: [25, 20, 15, 10, 8] // Percentage of potential savings
+  };
+  
+  new Chart(document.getElementById('savingsChart'), {
+    type: 'bar',
+    data: {
+      labels: savingsAnalysis.categories,
+      datasets: [{
+        label: 'Potential Savings (%)',
+        data: savingsAnalysis.potential,
+        backgroundColor: [
+          'rgba(13, 110, 253, 0.7)',
+          'rgba(220, 53, 69, 0.7)',
+          'rgba(255, 193, 7, 0.7)',
+          'rgba(32, 201, 151, 0.7)',
+          'rgba(13, 202, 240, 0.7)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } }
+    }
+  });
 
   // Time period selectors
   document.getElementById('thisMonth').addEventListener('click', function() {

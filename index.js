@@ -164,18 +164,21 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
     `);
     const avgCostPerPerson = parseFloat(avgCostPerPersonRes.rows[0].avg_cost) || 0;
 
+    // Get peak hours data
     const peakHours = await pool.query(`
       SELECT EXTRACT(HOUR FROM join_time) AS hour, COUNT(*) AS total
       FROM participant_sessions
       JOIN sessions ON participant_sessions.session_id = sessions.session_id
       GROUP BY hour ORDER BY hour`);
 
+    // Get duration buckets
     const durationBuckets = await pool.query(`
       SELECT width_bucket(EXTRACT(EPOCH FROM (leave_time - join_time))/60, 0, 300, 6) AS bucket,
              COUNT(*) AS total
       FROM participant_sessions
       GROUP BY bucket ORDER BY bucket`);
 
+    // Get group size categories
     const groupSizes = await pool.query(`
       SELECT CASE
                WHEN count <= 5 THEN 'Small (1–5)'
@@ -186,6 +189,7 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       FROM (SELECT session_id, COUNT(*) AS count FROM participant_sessions GROUP BY session_id) grouped
       GROUP BY size_category`);
 
+    // Get gender trends
     const genderTrends = await pool.query(`
       SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month,
              p.gender, COUNT(*) AS total
@@ -194,6 +198,7 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       JOIN participants p ON ps.participant_id = p.participant_id
       GROUP BY month, p.gender ORDER BY month, p.gender`);
 
+    // Get new vs returning participants
     const newVsReturning = await pool.query(`
       WITH first_sessions AS (
         SELECT participant_id, MIN(session_id) AS first_session
@@ -206,15 +211,83 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       JOIN first_sessions fs ON fs.participant_id = ps.participant_id
       GROUP BY month, type ORDER BY month, type`);
 
+    // Get sessions per month
     const sessionsPerMonth = await pool.query(`
       SELECT TO_CHAR(start_time, 'YYYY-MM') AS month, COUNT(*) AS total_sessions
       FROM sessions GROUP BY month ORDER BY month`);
 
+    // Get spending per month
     const spendingPerMonth = await pool.query(`
       SELECT TO_CHAR(s.start_time, 'YYYY-MM') AS month, SUM(ps.adjusted_cost) AS total_spent
       FROM participant_sessions ps
       JOIN sessions s ON ps.session_id = s.session_id
       GROUP BY month ORDER BY month`);
+      
+    // Get weekday analysis
+    const weekdayAnalysis = await pool.query(`
+      SELECT EXTRACT(DOW FROM s.start_time) AS day_of_week, 
+             COUNT(DISTINCT s.session_id) AS session_count,
+             SUM(ps.adjusted_cost) AS total_cost
+      FROM sessions s
+      JOIN participant_sessions ps ON s.session_id = ps.session_id
+      GROUP BY day_of_week
+      ORDER BY day_of_week`);
+      
+    // Get cost distribution (buckets of cost per person)
+    const costDistribution = await pool.query(`
+      SELECT width_bucket(adjusted_cost, 0, 100, 10) AS cost_bucket,
+             COUNT(*) AS count
+      FROM participant_sessions
+      WHERE adjusted_cost > 0
+      GROUP BY cost_bucket
+      ORDER BY cost_bucket`);
+      
+    // Get location usage
+    const locationUsage = await pool.query(`
+      SELECT l.name, 
+             COUNT(DISTINCT s.session_id) AS session_count,
+             SUM(ps.adjusted_cost) AS total_cost
+      FROM locations l
+      JOIN sessions s ON l.location_id = s.location_id
+      JOIN participant_sessions ps ON s.session_id = ps.session_id
+      GROUP BY l.name
+      ORDER BY session_count DESC
+      LIMIT 10`);
+      
+    // Get group size impact on cost
+    const groupSizeCost = await pool.query(`
+      WITH session_counts AS (
+        SELECT s.session_id, 
+               COUNT(ps.participant_id) AS participant_count,
+               SUM(ps.adjusted_cost) AS total_cost
+        FROM sessions s
+        JOIN participant_sessions ps ON s.session_id = ps.session_id
+        GROUP BY s.session_id
+      )
+      SELECT participant_count AS group_size,
+             AVG(total_cost / participant_count) AS avg_cost_per_person
+      FROM session_counts
+      WHERE participant_count BETWEEN 2 AND 15
+      GROUP BY participant_count
+      ORDER BY participant_count`);
+      
+    // Get duration vs cost data
+    const durationCost = await pool.query(`
+      SELECT 
+        EXTRACT(EPOCH FROM (leave_time - join_time))/3600 AS duration_hours,
+        adjusted_cost
+      FROM participant_sessions
+      WHERE leave_time IS NOT NULL AND adjusted_cost > 0
+      LIMIT 100`);
+      
+    // Get seasonal trends
+    const seasonalTrends = await pool.query(`
+      SELECT EXTRACT(MONTH FROM s.start_time) AS month,
+             SUM(ps.adjusted_cost) AS total_cost
+      FROM sessions s
+      JOIN participant_sessions ps ON s.session_id = ps.session_id
+      GROUP BY month
+      ORDER BY month`);
 
     res.render('analytics', {
       admin: req.session.admin,
@@ -229,11 +302,17 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       genderTrends: genderTrends.rows,
       sessionsPerMonth: sessionsPerMonth.rows,
       spendingPerMonth: spendingPerMonth.rows,
-      newVsReturning: newVsReturning.rows
+      newVsReturning: newVsReturning.rows,
+      weekdayAnalysis: weekdayAnalysis.rows,
+      costDistribution: costDistribution.rows,
+      locationUsage: locationUsage.rows,
+      groupSizeCost: groupSizeCost.rows, 
+      durationCost: durationCost.rows,
+      seasonalTrends: seasonalTrends.rows
     });
   } catch (err) {
     console.error(err);
-    res.send("Error loading analytics");
+    res.send("Error loading analytics: " + err.message);
   }
 });
 
