@@ -1066,3 +1066,30 @@ app.post('/api/participant-sessions/rejoin', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// GET all participants in a specific session including those who left (for calculator)
+app.get('/api/sessions/:id/all-participants', async (req, res) => {
+  const sessionId = req.params.id;
+
+  try {
+    const result = await pool.query(`
+      SELECT 
+        ps.participant_id,
+        ps.join_time,
+        ps.leave_time,
+        ps.computed_cost,
+        ps.adjusted_cost,
+        p.name,
+        p.gender
+      FROM participant_sessions ps
+      JOIN participants p ON ps.participant_id = p.participant_id
+      WHERE ps.session_id = $1
+      ORDER BY ps.join_time
+    `, [sessionId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching all participants:", err);
+    res.status(500).json({ error: "Failed to fetch participants" });
+  }
+});
