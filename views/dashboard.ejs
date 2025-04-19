@@ -8,16 +8,44 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fc; }
-    .sidebar { width: 250px; height: 100vh; background-color: #343a40; position: fixed; color: #fff; z-index: 100; }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #f7f9fc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar { 
+      width: 250px; 
+      height: 100vh; 
+      background-color: #343a40; 
+      position: fixed; 
+      color: #fff; 
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
     .sidebar h2 { padding: 20px; font-size: 20px; background-color: #212529; margin: 0; }
     .sidebar a { color: #adb5bd; display: block; padding: 15px 20px; text-decoration: none; }
     .sidebar a:hover, .sidebar a.active { background-color: #495057; color: #fff; }
     .sidebar a i { margin-right: 10px; }
-    .main { margin-left: 250px; padding: 30px; }
-    .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s; }
+    .main { 
+      margin-left: 250px; 
+      padding: 30px;
+      transition: margin-left 0.3s ease;
+      width: calc(100% - 250px);
+    }
+    .card { 
+      border: none; 
+      border-radius: 10px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+      transition: all 0.3s; 
+    }
     .card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+      gap: 20px; 
+    }
     .stat-card { position: relative; padding: 20px; border-radius: 10px; overflow: hidden; }
     .stat-card .icon { position: absolute; right: 10px; top: 10px; font-size: 3rem; opacity: 0.2; }
     .stat-card h3 { margin: 0; font-size: 2rem; font-weight: bold; }
@@ -70,11 +98,121 @@
     .recent-activity-item:last-child {
       border-bottom: none;
     }
+    
+    /* Mobile navbar */
+    .mobile-nav {
+      display: none;
+      background-color: #343a40;
+      padding: 10px 15px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 101;
+    }
+    .mobile-nav-title {
+      color: white;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+    }
+    .mobile-nav-title i {
+      margin-right: 10px;
+    }
+    .menu-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    /* Responsive styles */
+    @media (max-width: 991.98px) {
+      .mobile-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .sidebar {
+        transform: translateX(-100%);
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 70px 15px 15px 15px;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .quick-action-btn {
+        width: 100%;
+        margin: 5px 0;
+        text-align: center;
+      }
+      /* Fix for charts on small screens */
+      canvas {
+        max-width: 100%;
+      }
+      /* Adjust header for mobile */
+      .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+      .d-flex.justify-content-between.align-items-center > div {
+        margin-top: 15px;
+        width: 100%;
+      }
+      /* Make buttons take full width on mobile */
+      .d-flex.justify-content-between.align-items-center > div a {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+      }
+    }
+    
+    @media (max-width: 575.98px) {
+      .card {
+        padding: 15px !important;
+      }
+      h2 {
+        font-size: 1.5rem;
+      }
+      .stat-card h3 {
+        font-size: 1.5rem;
+      }
+      .btn-group {
+        margin-top: 10px;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div class="sidebar">
+<!-- Mobile Navigation Bar -->
+<div class="mobile-nav">
+  <button class="menu-toggle" id="sidebarToggle">
+    <i class="bi bi-list"></i>
+  </button>
+  <div class="mobile-nav-title">
+    <i class="bi bi-music-note-beamed"></i>
+    K-Cal Admin
+  </div>
+  <div style="width: 24px;">
+    <!-- Placeholder to center the title -->
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
   <h2><i class="bi bi-speedometer2"></i> Admin Panel</h2>
   <a class="active" href="/admin/dashboard"><i class="bi bi-house-door"></i> Dashboard</a>
   <a href="/admin/analytics"><i class="bi bi-bar-chart"></i> Analytics</a>
@@ -83,11 +221,11 @@
   <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
-
 <div class="main">
+  <!-- Page Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Welcome, <%= admin.username %> <i class="bi bi-emoji-smile text-warning"></i></h2>
-    <div>
+    <div class="action-buttons">
       <a href="/admin/settings?tab=sessions" class="btn btn-primary quick-action-btn" id="newSessionBtn">
         <i class="bi bi-plus-circle"></i> New Session
       </a>
@@ -97,6 +235,7 @@
     </div>
   </div>
 
+  <!-- Stats Grid -->
   <div class="stats-grid mb-4">
     <div class="card stat-card bg-primary text-white">
       <div class="icon"><i class="bi bi-people"></i></div>
@@ -124,10 +263,10 @@
 
   <div class="row mt-4">
     <!-- Left Column: Gender Chart -->
-    <div class="col-md-8 mb-4">
+    <div class="col-lg-8 mb-4">
       <div class="card p-3 shadow-sm">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0"><i class="bi bi-gender-ambiguous"></i> Session Gender Breakdown</h5>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+          <h5 class="mb-2 mb-md-0"><i class="bi bi-gender-ambiguous"></i> Session Gender Breakdown</h5>
           <div class="btn-group">
             <button class="btn btn-sm btn-outline-secondary">Week</button>
             <button class="btn btn-sm btn-outline-secondary active">Month</button>
@@ -140,8 +279,8 @@
       </div>
 
       <div class="card p-4 shadow-sm mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0"><i class="bi bi-graph-up"></i> Daily Cost</h5>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+          <h5 class="mb-2 mb-md-0"><i class="bi bi-graph-up"></i> Daily Cost</h5>
           <select id="chartMonth" class="form-select form-select-sm w-auto"></select>
         </div>
         <canvas id="trendChart" height="100"></canvas>
@@ -149,12 +288,12 @@
     </div>
 
     <!-- Right Column: Calendar + Recent Activity + Top Participants -->
-    <div class="col-md-4 mb-4">
+    <div class="col-lg-4 mb-4">
       <div class="card p-3 shadow-sm">
         <h5 class="mb-2"><i class="bi bi-calendar-event"></i> Event Calendar</h5>
         <select id="calendarMonth" class="form-select form-select-sm mb-2"></select>
         <div class="calendar-header d-grid" style="grid-template-columns: repeat(7, 1fr); font-weight: bold; font-size: 13px; text-align: center; margin-bottom: 5px;">
-          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
         </div>
         <div id="calendar"></div>
       </div>
@@ -204,189 +343,219 @@
      style="display:none;">
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // Get data from data attributes 
-  const dataElement = document.getElementById('serverData');
-  const genderData = JSON.parse(dataElement.dataset.gender);
-  const genderLabels = genderData.map(s => {
-    const date = new Date(s.start_time);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  });
-  const maleCounts = genderData.map(s => s.male_count);
-  const femaleCounts = genderData.map(s => s.female_count);
-
-  const genderCtx = document.getElementById('genderChart').getContext('2d');
-  new Chart(genderCtx, {
-    type: 'bar',
-    data: {
-      labels: genderLabels,
-      datasets: [
-        {
-          label: 'Male',
-          data: maleCounts,
-          backgroundColor: 'rgba(54, 162, 235, 0.7)'
-        },
-        {
-          label: 'Female',
-          data: femaleCounts,
-          backgroundColor: 'rgba(255, 99, 132, 0.7)'
+  // Sidebar toggle functionality for mobile
+  document.addEventListener("DOMContentLoaded", function() {
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    sidebarToggle.addEventListener('click', function() {
+      sidebar.classList.toggle('active');
+    });
+    
+    // Close sidebar when clicking on a link (for mobile)
+    const sidebarLinks = document.querySelectorAll('.sidebar a');
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth < 992) {
+          sidebar.classList.remove('active');
         }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top' }
-      },
-      scales: {
-        x: {
-          stacked: true
-        },
-        y: {
-          stacked: true,
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Number of People'
-          }
+      });
+    });
+    
+    // Close sidebar when clicking outside (for mobile)
+    document.addEventListener('click', function(event) {
+      if (window.innerWidth < 992) {
+        if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+          sidebar.classList.remove('active');
         }
       }
-    }
-  });
-  
-  const sessionDates = JSON.parse(dataElement.dataset.sessionDates);
-  const dailyChartData = JSON.parse(dataElement.dataset.dailyChart);
-
-  // Calendar logic
-  function populateCalendar(year, month) {
-    const container = document.getElementById("calendar");
-    container.innerHTML = "";
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) {
-      const blank = document.createElement("div");
-      blank.classList.add("calendar-day", "blank");
-      container.appendChild(blank);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-      const dayEl = document.createElement("div");
-      dayEl.classList.add("calendar-day");
-      if (sessionDates.includes(dateStr)) {
-        dayEl.classList.add("session");
-      }
-      dayEl.textContent = day;
-      container.appendChild(dayEl);
-    }
-
-    // Fill remaining slots to complete 6 rows
-    const totalDays = firstDay + daysInMonth;
-    const remainingSlots = 42 - totalDays; // 6 rows × 7 columns = 42 slots
-    for (let i = 0; i < remainingSlots; i++) {
-      const blank = document.createElement("div");
-      blank.classList.add("calendar-day", "blank");
-      container.appendChild(blank);
-    }
-  }
-
-  function setupCalendarDropdown() {
-    const now = new Date();
-    const select = document.getElementById("calendarMonth");
-    
-    // Populate dropdown with last 12 months
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - i);
-      const option = document.createElement("option");
-      option.value = d.getMonth() + "-" + d.getFullYear();
-      option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      if (i === 0) option.selected = true;
-      select.appendChild(option);
-    }
-    
-    // Initial calendar display
-    populateCalendar(now.getFullYear(), now.getMonth());
-    
-    // Handle month change
-    select.addEventListener("change", function() {
-      const [month, year] = this.value.split("-");
-      populateCalendar(parseInt(year), parseInt(month));
     });
-  }
   
-  // Setup trend chart
-  function setupTrendChart() {
-    const select = document.getElementById("chartMonth");
-    const months = Object.keys(dailyChartData).sort().reverse();
-    
-    months.forEach(month => {
-      const option = document.createElement("option");
-      option.value = month;
-      const [year, monthNum] = month.split("-");
-      const monthName = new Date(year, monthNum - 1).toLocaleString('default', { month: 'long' });
-      option.textContent = monthName + " " + year;
-      select.appendChild(option);
+    // Get data from data attributes 
+    const dataElement = document.getElementById('serverData');
+    const genderData = JSON.parse(dataElement.dataset.gender);
+    const genderLabels = genderData.map(s => {
+      const date = new Date(s.start_time);
+      return `${date.getMonth() + 1}/${date.getDate()}`;
     });
-    
-    if (months.length > 0) {
-      updateTrendChart(months[0]);
-    }
-    
-    select.addEventListener("change", function() {
-      updateTrendChart(this.value);
-    });
-  }
-  
-  function updateTrendChart(month) {
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    const data = dailyChartData[month] || [];
-    const labels = data.map(d => d.day.split("-")[2]); // Just show day number
-    const values = data.map(d => d.total);
-    
-    if (window.trendChart) window.trendChart.destroy();
-    
-    window.trendChart = new Chart(ctx, {
-      type: 'line',
+    const maleCounts = genderData.map(s => s.male_count);
+    const femaleCounts = genderData.map(s => s.female_count);
+
+    const genderCtx = document.getElementById('genderChart').getContext('2d');
+    new Chart(genderCtx, {
+      type: 'bar',
       data: {
-        labels: labels,
-        datasets: [{
-          label: 'Daily Cost ($)',
-          data: values,
-          borderColor: 'rgba(75, 192, 192, 1)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.1,
-          fill: true
-        }]
+        labels: genderLabels,
+        datasets: [
+          {
+            label: 'Male',
+            data: maleCounts,
+            backgroundColor: 'rgba(54, 162, 235, 0.7)'
+          },
+          {
+            label: 'Female',
+            data: femaleCounts,
+            backgroundColor: 'rgba(255, 99, 132, 0.7)'
+          }
+        ]
       },
       options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(value) {
-                return '$' + value;
-              }
-            }
-          }
-        },
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: {
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return '$' + context.raw.toFixed(2);
-              }
+          legend: { position: 'top' }
+        },
+        scales: {
+          x: {
+            stacked: true
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Number of People'
             }
           }
         }
       }
     });
-  }
-  
-  // Initialize components
-  document.addEventListener("DOMContentLoaded", function() {
+    
+    const sessionDates = JSON.parse(dataElement.dataset.sessionDates);
+    const dailyChartData = JSON.parse(dataElement.dataset.dailyChart);
+
+    // Calendar logic
+    function populateCalendar(year, month) {
+      const container = document.getElementById("calendar");
+      container.innerHTML = "";
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const blank = document.createElement("div");
+        blank.classList.add("calendar-day", "blank");
+        container.appendChild(blank);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        const dayEl = document.createElement("div");
+        dayEl.classList.add("calendar-day");
+        if (sessionDates.includes(dateStr)) {
+          dayEl.classList.add("session");
+        }
+        dayEl.textContent = day;
+        container.appendChild(dayEl);
+      }
+
+      // Fill remaining slots to complete 6 rows
+      const totalDays = firstDay + daysInMonth;
+      const remainingSlots = 42 - totalDays; // 6 rows × 7 columns = 42 slots
+      for (let i = 0; i < remainingSlots; i++) {
+        const blank = document.createElement("div");
+        blank.classList.add("calendar-day", "blank");
+        container.appendChild(blank);
+      }
+    }
+
+    function setupCalendarDropdown() {
+      const now = new Date();
+      const select = document.getElementById("calendarMonth");
+      
+      // Populate dropdown with last 12 months
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - i);
+        const option = document.createElement("option");
+        option.value = d.getMonth() + "-" + d.getFullYear();
+        option.textContent = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+        if (i === 0) option.selected = true;
+        select.appendChild(option);
+      }
+      
+      // Initial calendar display
+      populateCalendar(now.getFullYear(), now.getMonth());
+      
+      // Handle month change
+      select.addEventListener("change", function() {
+        const [month, year] = this.value.split("-");
+        populateCalendar(parseInt(year), parseInt(month));
+      });
+    }
+    
+    // Setup trend chart
+    function setupTrendChart() {
+      const select = document.getElementById("chartMonth");
+      const months = Object.keys(dailyChartData).sort().reverse();
+      
+      months.forEach(month => {
+        const option = document.createElement("option");
+        option.value = month;
+        const [year, monthNum] = month.split("-");
+        const monthName = new Date(year, monthNum - 1).toLocaleString('default', { month: 'long' });
+        option.textContent = monthName + " " + year;
+        select.appendChild(option);
+      });
+      
+      if (months.length > 0) {
+        updateTrendChart(months[0]);
+      }
+      
+      select.addEventListener("change", function() {
+        updateTrendChart(this.value);
+      });
+    }
+    
+    function updateTrendChart(month) {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      const data = dailyChartData[month] || [];
+      const labels = data.map(d => d.day.split("-")[2]); // Just show day number
+      const values = data.map(d => d.total);
+      
+      if (window.trendChart) window.trendChart.destroy();
+      
+      window.trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Daily Cost ($)',
+            data: values,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '$' + value;
+                }
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return '$' + context.raw.toFixed(2);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Initialize components
     setupCalendarDropdown();
     setupTrendChart();
     
