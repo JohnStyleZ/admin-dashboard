@@ -226,18 +226,33 @@ app.get('/admin/settings', requireAdmin, async (req, res) => {
      ORDER BY p.participant_id`
   );
 
-  // Get sessions with counts - don't limit to 20
+  // Get sessions with counts and join with participants to get starter name
   const sessionsRes = await pool.query(
     `SELECT s.*, 
             l.name as location_name, 
+            starter.name as starter_name,
             COUNT(ps.participant_id) as participant_count,
             SUM(ps.adjusted_cost) as revenue
      FROM sessions s
      LEFT JOIN locations l ON s.location_id = l.location_id
+     LEFT JOIN participants starter ON s.started_by = starter.participant_id
      LEFT JOIN participant_sessions ps ON s.session_id = ps.session_id
-     GROUP BY s.session_id, l.name, s.start_time, s.started_by
+     GROUP BY s.session_id, l.name, starter.name, s.start_time
      ORDER BY s.start_time DESC`
   );
+
+  // For each session, get the list of participants
+  for (const session of sessionsRes.rows) {
+    const sessionParticipantsRes = await pool.query(
+      `SELECT p.*, ps.join_time, ps.leave_time, ps.adjusted_cost
+       FROM participants p
+       JOIN participant_sessions ps ON p.participant_id = ps.participant_id
+       WHERE ps.session_id = $1
+       ORDER BY ps.join_time`,
+      [session.session_id]
+    );
+    session.participants = sessionParticipantsRes.rows;
+  }
 
   // Get rate settings for selected location
   const ratesRes = await pool.query(
@@ -477,7 +492,7 @@ app.post('/admin/settings/delete-participant/:participant_id', requireAdmin, asy
 
 // --- Create Session ---
 app.post('/admin/settings/create-session', requireAdmin, async (req, res) => {
-  const { date, time, location_id, room_number } = req.body;
+  const { date, time, location_id, room_number, started_by_id } = req.body;
   
   try {
     // Combine date and time into timestamp
@@ -488,12 +503,18 @@ app.post('/admin/settings/create-session', requireAdmin, async (req, res) => {
       throw new Error('Invalid date or time format');
     }
     
-    // Get admin name
-    const adminName = req.session.admin.username || 'Admin';
+    // Default to the first participant if no starter specified
+    let starterId = started_by_id;
+    if (!starterId) {
+      const firstParticipantRes = await pool.query('SELECT participant_id FROM participants LIMIT 1');
+      if (firstParticipantRes.rows.length > 0) {
+        starterId = firstParticipantRes.rows[0].participant_id;
+      }
+    }
     
     await pool.query(
       'INSERT INTO sessions (location_id, start_time, room_number, started_by) VALUES ($1, $2, $3, $4)',
-      [location_id, timestamp, room_number || null, adminName]
+      [location_id, timestamp, room_number || null, starterId || null]
     );
     
     req.session.message = 'Session created successfully!';
@@ -1297,7 +1318,7 @@ app.get('/api/sessions/:id/all-participants', async (req, res) => {
 // --- Update Session ---
 app.post('/admin/settings/update-session/:session_id', requireAdmin, async (req, res) => {
   const { session_id } = req.params;
-  const { date, time, location_id, room_number, started_by } = req.body;
+  const { date, time, location_id, room_number, started_by_id } = req.body;
   
   try {
     // Combine date and time into timestamp
@@ -1310,13 +1331,35 @@ app.post('/admin/settings/update-session/:session_id', requireAdmin, async (req,
     
     await pool.query(
       'UPDATE sessions SET location_id = $1, start_time = $2, room_number = $3, started_by = $4 WHERE session_id = $5',
-      [location_id, timestamp, room_number || null, started_by || null, session_id]
+      [location_id, timestamp, room_number || null, started_by_id || null, session_id]
     );
     
     req.session.message = 'Session updated successfully!';
   } catch (err) {
     console.error('Failed to update session:', err);
     req.session.message = 'Failed to update session: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=sessions');
+});
+
+// --- Update Session Participant ---
+app.post('/admin/settings/update-session-participant/:session_id/:participant_id', requireAdmin, async (req, res) => {
+  const { session_id, participant_id } = req.params;
+  const { join_time, leave_time, adjusted_cost } = req.body;
+  
+  try {
+    await pool.query(
+      `UPDATE participant_sessions 
+       SET join_time = $1, leave_time = $2, adjusted_cost = $3 
+       WHERE session_id = $4 AND participant_id = $5`,
+      [join_time, leave_time, adjusted_cost, session_id, participant_id]
+    );
+    
+    req.session.message = 'Participant session updated successfully!';
+  } catch (err) {
+    console.error('Failed to update participant session:', err);
+    req.session.message = 'Failed to update participant session: ' + err.message;
   }
   
   res.redirect('/admin/settings?tab=sessions');
