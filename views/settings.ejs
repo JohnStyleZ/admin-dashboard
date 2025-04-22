@@ -560,6 +560,17 @@
           </div>
         </div>
       </div>
+      
+      <!-- Database Refresh Section -->
+      <div class="card mt-4">
+        <div class="card-body">
+          <h5 class="text-danger mb-3"><i class="bi bi-exclamation-triangle"></i> Database Maintenance</h5>
+          <p>This will refresh the database by <strong>removing all sessions</strong> while preserving all participant and admin accounts.</p>
+          <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#refreshDatabaseModal">
+            <i class="bi bi-arrow-repeat"></i> Refresh Database
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -967,6 +978,37 @@
     </div>
   <% }); %>
 <% } %>
+
+<!-- Refresh Database Confirmation Modal -->
+<div class="modal fade" id="refreshDatabaseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Confirm Database Refresh</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fw-bold">Are you absolutely sure you want to refresh the database?</p>
+        <p>This action will:</p>
+        <ul>
+          <li>Delete ALL sessions data</li>
+          <li>Delete ALL participant session records</li>
+          <li>Reset session ID sequences</li>
+        </ul>
+        <p class="text-danger"><strong>Note:</strong> This action cannot be undone.</p>
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle"></i> Participant accounts and admin accounts will be preserved.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form action="/admin/settings/refresh-database" method="POST">
+          <button type="submit" class="btn btn-danger">Yes, Refresh Database</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>

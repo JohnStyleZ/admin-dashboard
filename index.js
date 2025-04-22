@@ -657,6 +657,39 @@ app.post('/admin/settings/delete-session/:session_id', requireAdmin, async (req,
   res.redirect('/admin/settings?tab=sessions');
 });
 
+// --- Database Refresh ---
+app.post('/admin/settings/refresh-database', requireAdmin, async (req, res) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Begin transaction
+      await client.query('BEGIN');
+      
+      // Delete all participant_sessions
+      await client.query('DELETE FROM participant_sessions');
+      
+      // Delete all sessions
+      await client.query('DELETE FROM sessions');
+      
+      // Reset any session-related sequences if they exist
+      await client.query('ALTER SEQUENCE sessions_session_id_seq RESTART WITH 1');
+      
+      await client.query('COMMIT');
+      req.session.message = '✅ Database refreshed successfully! All sessions have been deleted, but participant and admin accounts are preserved.';
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Failed to refresh database:', err);
+    req.session.message = '❌ Failed to refresh database: ' + err.message;
+  }
+  
+  res.redirect('/admin/settings?tab=sessions');
+});
+
 app.use(express.json()); 
 
 
